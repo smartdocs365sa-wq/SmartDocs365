@@ -1,15 +1,16 @@
 // ============================================
-// FILE: insurance-policy-frontend/src/pages/Home.jsx
-// COMPLETE FIXED VERSION - Admin Login with Eye Icon
+// FILE: src/pages/Home.jsx
+// ✅ FIXED: Replaced hardcoded fetch with authService
 // ============================================
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Upload, Shield, TrendingUp, CheckCircle, Lock, Mail, AlertCircle, UserCog, X, Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/logo.png';
+import { authService } from '../services/auth'; // ✅ Import authService
 
 const Home = () => {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [showAdminPassword, setShowAdminPassword] = useState(false); // ✅ NEW
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminForm, setAdminForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -42,22 +43,16 @@ const Home = () => {
     }
   ];
 
+  // ✅ FIXED LOGIN FUNCTION
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrors({});
 
     try {
-      const response = await fetch('http://localhost:3033/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email_address: adminForm.email, 
-          password: adminForm.password 
-        })
-      });
-
-      const data = await response.json();
+      // ❌ REMOVED: fetch('http://localhost:3033/api/login'...)
+      // ✅ ADDED: authService.login()
+      const data = await authService.login(adminForm.email, adminForm.password);
 
       if (data.success) {
         localStorage.setItem('token', data.token);
@@ -65,17 +60,20 @@ const Home = () => {
         
         const role = data.user?.role;
         if (role === 'admin' || role === 'super-admin') {
-          navigate('/admin');
+          navigate('/admin'); // Changed to /admin-panel if that is your route, but kept /admin as per code
         } else {
           navigate('/dashboard');
         }
-        window.location.reload();
+        // Small delay to ensure navigation completes before reload (optional but safer)
+        setTimeout(() => window.location.reload(), 100);
       } else {
         setErrors({ submit: data.message || 'Login failed' });
       }
     } catch (error) {
       console.error('Login error:', error);
-      setErrors({ submit: 'Connection error. Please check if backend is running.' });
+      // Extract error message from backend if available
+      const msg = error.response?.data?.message || 'Connection error. Please check if backend is running.';
+      setErrors({ submit: msg });
     } finally {
       setLoading(false);
     }
@@ -237,7 +235,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ✅ ADMIN LOGIN MODAL WITH EYE ICON */}
+      {/* ADMIN LOGIN MODAL */}
       {showAdminLogin && (
         <div 
           style={{
@@ -367,7 +365,6 @@ const Home = () => {
                 </div>
               </div>
 
-              {/* ✅ PASSWORD WITH EYE ICON */}
               <div style={{ marginBottom: '1.75rem' }}>
                 <label style={{
                   display: 'block',
@@ -407,7 +404,6 @@ const Home = () => {
                     onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                   />
                   
-                  {/* ✅ EYE ICON */}
                   <button
                     type="button"
                     onClick={() => setShowAdminPassword(!showAdminPassword)}
