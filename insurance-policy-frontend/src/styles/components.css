@@ -1,0 +1,599 @@
+/* =====================================================
+   🎯 REGISTRATION PROGRESS STEPS
+   ===================================================== */
+
+/* Progress Steps Container */
+.progress-steps {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin-bottom: 2.5rem !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+/* Individual Progress Step */
+.progress-step {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+
+/* Progress Circle - THE MAIN FIX */
+.progress-circle {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 700 !important;
+  font-size: 1.125rem !important;
+  background: #e5e7eb !important;
+  color: #9ca3af !important;
+  border: 3px solid #e5e7eb !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 2 !important;
+  position: relative !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Active Progress Circle */
+.progress-circle.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border-color: #667eea !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4) !important;
+}
+
+/* Progress Line Between Steps */
+.progress-line {
+  width: 80px !important;
+  height: 4px !important;
+  background: #e5e7eb !important;
+  position: relative !important;
+  z-index: 1 !important;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 2px !important;
+  margin: 0 !important;
+}
+
+/* Active Progress Line */
+.progress-line.active {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
+  box-shadow: 0 0 12px rgba(102, 126, 234, 0.5) !important;
+}
+
+/* Animation for progress changes */
+@keyframes pulseStep {
+  0%, 100% {
+    transform: scale(1.15);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.progress-circle.active {
+  animation: pulseStep 0.6s ease-out !important;
+}
+
+/* =====================================================
+   🔥 FULL SCREEN EXTRACTED DATA MODAL
+   ===================================================== */
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 0;
+}
+
+/* Default Modal */
+.modal-content {
+  background: #ffffff;
+  border-radius: 1rem;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+/* 🔥 FULL SCREEN MODAL FOR EXTRACTED DATA */
+.modal-content.modal-extracted {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =====================================================
+   MODAL HEADER
+   ===================================================== */
+.modal-header {
+  padding: 2rem 3rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: none;
+}
+
+.modal-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* =====================================================
+   🔥 MODAL BODY - SCROLLABLE AREA
+   ===================================================== */
+.modal-body {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 3rem !important;
+  background: #f3f4f6 !important;
+}
+
+/* Custom Scrollbar */
+.modal-body::-webkit-scrollbar {
+  width: 12px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: #e5e7eb;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 6px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* =====================================================
+   ALERT
+   ===================================================== */
+.alert {
+  padding: 1.5rem 2rem;
+  border-radius: 0.875rem;
+  font-size: 1rem;
+  margin-bottom: 2.5rem;
+  font-weight: 500;
+}
+
+.alert-info {
+  background: #eff6ff;
+  border: 2px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.alert-error {
+  background: #fee2e2;
+  border: 2px solid #fecaca;
+  color: #dc2626;
+}
+
+/* =====================================================
+   🔥 4-COLUMN GRID
+   ===================================================== */
+.extracted-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  padding-bottom: 2rem;
+}
+
+/* =====================================================
+   🔥 FIELD BOX - LARGER
+   ===================================================== */
+.field-box {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 0.875rem;
+  border: 2px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.2s;
+  min-height: 140px;
+}
+
+.field-box:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.field-box:focus-within {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+/* Full width for certain fields */
+.field-box.full-width {
+  grid-column: span 4;
+}
+
+/* =====================================================
+   LABEL & INPUT
+   ===================================================== */
+.label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  color: #111827;
+  transition: all 0.2s;
+  background: #ffffff;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.input-field::placeholder {
+  color: #9ca3af;
+}
+
+.input-field.input-error {
+  border-color: #ef4444;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.input-rect {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #111827;
+  transition: all 0.2s;
+  background: #ffffff;
+}
+
+.input-rect:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.input-rect::placeholder {
+  color: #9ca3af;
+}
+
+/* =====================================================
+   🔥 MODAL FOOTER - FIXED AT BOTTOM
+   ===================================================== */
+.modal-footer {
+  display: flex;
+  gap: 1.5rem;
+  padding: 2rem 3rem;
+  border-top: 2px solid #e5e7eb;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.modal-footer .btn {
+  flex: 1;
+  padding: 1rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-radius: 0.75rem;
+}
+
+/* =====================================================
+   BUTTONS
+   ===================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.625rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background: #d1d5db;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* =====================================================
+   UTILITY CLASSES
+   ===================================================== */
+.text-center {
+  text-align: center;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
+}
+
+.mb-8 {
+  margin-bottom: 2rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+/* =====================================================
+   🎨 RESPONSIVE BREAKPOINTS
+   ===================================================== */
+
+/* Progress Steps Responsive */
+@media (max-width: 768px) {
+  .progress-circle {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 1rem !important;
+    border-width: 2px !important;
+  }
+  
+  .progress-line {
+    width: 50px !important;
+    height: 3px !important;
+  }
+  
+  .progress-circle.active {
+    transform: scale(1.1) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .progress-circle {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 0.95rem !important;
+  }
+  
+  .progress-line {
+    width: 40px !important;
+  }
+  
+  .progress-steps {
+    margin-bottom: 2rem !important;
+  }
+}
+
+/* Large screens (1600px+): Keep 4 columns */
+@media (min-width: 1600px) {
+  .extracted-grid {
+    gap: 2.5rem;
+  }
+  
+  .field-box {
+    min-height: 150px;
+  }
+}
+
+/* Medium-large (1200px - 1599px): 4 columns */
+@media (max-width: 1599px) {
+  .extracted-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.75rem;
+  }
+  
+  .modal-body {
+    padding: 2.5rem !important;
+  }
+}
+
+/* Tablets (900px - 1199px): 3 columns */
+@media (max-width: 1199px) {
+  .extracted-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .field-box.full-width {
+    grid-column: span 3;
+  }
+  
+  .modal-body {
+    padding: 2rem !important;
+  }
+  
+  .modal-header {
+    padding: 1.75rem 2rem;
+  }
+  
+  .modal-footer {
+    padding: 1.75rem 2rem;
+  }
+}
+
+/* Small tablets (600px - 899px): 2 columns */
+@media (max-width: 899px) {
+  .extracted-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+  
+  .field-box.full-width {
+    grid-column: span 2;
+  }
+  
+  .modal-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* Mobile (< 600px): 1 column */
+@media (max-width: 599px) {
+  .extracted-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .field-box.full-width {
+    grid-column: span 1;
+  }
+  
+  .modal-body {
+    padding: 1.5rem !important;
+  }
+  
+  .modal-header {
+    padding: 1.5rem;
+  }
+  
+  .modal-footer {
+    padding: 1.5rem;
+    flex-direction: column;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+  }
+  
+  .modal-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* =====================================================
+   PREVENT BODY SCROLL WHEN MODAL OPEN
+   ===================================================== */
+body.modal-open {
+  overflow: hidden !important;
+}
+
+/* =====================================================
+   ANIMATIONS
+   ===================================================== */
+
+/* Spinner Animation */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+/* Upload Modal Spinner */
+.loader .spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+
+/* Shake Animation */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}

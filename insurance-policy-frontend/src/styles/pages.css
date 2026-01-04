@@ -1,0 +1,766 @@
+/* ============================================
+   FILE: src/styles/pages.css
+   ============================================ */
+
+/* Home Page */
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6rem 0;
+    text-align: center;
+  }
+  
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.5rem;
+    margin-bottom: 2.5rem;
+    opacity: 0.9;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .hero-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .hero-btn {
+    padding: 1rem 2rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 1.125rem;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  
+  .hero-btn-primary {
+    background: white;
+    color: #667eea;
+  }
+  
+  .hero-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  }
+  
+  .hero-btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+  }
+  
+  .hero-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .features-section {
+    padding: 5rem 0;
+  }
+  
+  .section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 1rem;
+    color: #111827;
+  }
+  
+  .section-subtitle {
+    font-size: 1.25rem;
+    text-align: center;
+    color: #6b7280;
+    margin-bottom: 4rem;
+  }
+  
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+  }
+  
+  .feature-card {
+    background: #f9fafb;
+    padding: 2rem;
+    border-radius: 1rem;
+    transition: all 0.3s;
+  }
+  
+  .feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  .feature-icon {
+    width: 48px;
+    height: 48px;
+    color: #667eea;
+    margin-bottom: 1rem;
+  }
+  
+  .feature-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #111827;
+  }
+  
+  .feature-description {
+    color: #6b7280;
+    line-height: 1.6;
+  }
+  
+  .cta-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 4rem 0;
+    text-align: center;
+    color: white;
+  }
+  
+  /* Dashboard Page */
+  .dashboard-header {
+    margin-bottom: 2rem;
+  }
+  
+  .dashboard-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+  }
+  
+  .subscription-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 1rem;
+    padding: 2rem;
+    color: white;
+    margin-bottom: 2rem;
+  }
+  
+  .subscription-progress {
+    background: rgba(255, 255, 255, 0.2);
+    height: 8px;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 1rem;
+  }
+  
+  .subscription-progress-bar {
+    background: white;
+    height: 100%;
+    transition: width 0.5s;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  
+  .stat-card:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  .stat-info h3 {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-info p {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+  }
+  
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .quick-action-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.2s;
+  }
+  
+  .quick-action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Policies Page */
+  .policies-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .filters-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+  }
+  
+  .filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+  
+  .search-input {
+    position: relative;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+  }
+  
+  .search-input input {
+    padding-left: 2.5rem;
+  }
+  
+  /* Subscription Page */
+  .subscription-plans {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+  }
+  
+  .plan-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+  
+  .plan-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  }
+  
+  .plan-card.current {
+    border: 3px solid #667eea;
+  }
+  
+  .plan-badge {
+    background: #667eea;
+    color: white;
+    text-align: center;
+    padding: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .plan-content {
+    padding: 2rem;
+  }
+  
+  .plan-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #111827;
+  }
+  
+  .plan-price {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 0.5rem;
+  }
+  
+  .plan-duration {
+    color: #6b7280;
+    margin-bottom: 2rem;
+  }
+  
+  .plan-features {
+    list-style: none;
+    margin-bottom: 2rem;
+  }
+  
+  .plan-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    color: #4b5563;
+  }
+  
+  .feature-check {
+    color: #16a34a;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  
+  /* Profile Page */
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+  }
+  
+  .profile-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .profile-form {
+    display: grid;
+    gap: 1rem;
+  }
+  
+  .profile-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  
+  .info-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+  }
+  
+  .info-item {
+    margin-bottom: 1rem;
+  }
+  
+  .info-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .info-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+  }
+  
+  .info-value {
+    font-weight: 600;
+    color: #111827;
+  }
+  
+  /* Admin Page */
+  .admin-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 1rem 1rem 0 0;
+    overflow-x: auto;
+  }
+  
+  .admin-tab {
+    padding: 1rem 1.5rem;
+    border: none;
+    background: none;
+    color: #6b7280;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .admin-tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background: white;
+  }
+  
+  .admin-tab:hover {
+    color: #111827;
+  }
+  
+  .admin-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 0 0 1rem 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 4rem 1rem;
+  }
+  
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    color: #d1d5db;
+    margin: 0 auto 1rem;
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 1024px) {
+    .profile-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 2rem;
+    }
+    
+    .hero-subtitle {
+      font-size: 1.125rem;
+    }
+    
+    .section-title {
+      font-size: 1.875rem;
+    }
+    
+    .profile-form-row {
+      grid-template-columns: 1fr;
+    }
+    
+    .policies-header {
+      flex-direction: column;
+    }
+  }
+
+  /* ============================================
+   UPLOAD MODAL - CSS FIXES FOR POLICIES.JSX
+   ============================================ */
+
+/* ✅ FIXED: Modal overlay positioning */
+.modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  padding: 1rem !important;
+  overflow-y: auto !important;
+}
+
+/* ✅ FIXED: Modal content positioning and sizing */
+.modal-content {
+  background: white !important;
+  border-radius: 1rem !important;
+  width: 100% !important;
+  max-width: 600px !important;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+  padding: 0 !important;
+  position: relative !important;
+  animation: modalSlideIn 0.3s ease-out !important;
+  margin: auto !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ✅ FIXED: Modal header */
+.modal-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 1.5rem !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border-radius: 1rem 1rem 0 0 !important;
+}
+
+.modal-title {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: white !important;
+  margin: 0 !important;
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: none !important;
+  color: white !important;
+  cursor: pointer !important;
+  padding: 0.5rem !important;
+  border-radius: 0.5rem !important;
+  transition: background 0.2s !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+.modal-close:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* ✅ FIXED: Modal body */
+.modal-body {
+  padding: 2rem !important;
+}
+
+/* ✅ FIXED: File input styling */
+.input-field[type="file"] {
+  width: 100% !important;
+  padding: 0.75rem !important;
+  border: 2px dashed #d1d5db !important;
+  border-radius: 0.5rem !important;
+  background: #f9fafb !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.input-field[type="file"]:hover {
+  border-color: #667eea !important;
+  background: #f0f4ff !important;
+}
+
+.input-field[type="file"]:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* ✅ FIXED: Upload progress indicator */
+.upload-progress {
+  margin-top: 1rem !important;
+  padding: 1.5rem !important;
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: 0.5rem !important;
+  text-align: center !important;
+}
+
+.upload-progress .spinner {
+  width: 48px !important;
+  height: 48px !important;
+  border: 4px solid #e5e7eb !important;
+  border-top-color: #667eea !important;
+  border-radius: 50% !important;
+  animation: spin 1s linear infinite !important;
+  margin: 0 auto 1rem !important;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ✅ FIXED: File list display */
+.file-list {
+  margin-top: 1rem !important;
+  padding: 1rem !important;
+  background: #f0fdf4 !important;
+  border: 1px solid #86efac !important;
+  border-radius: 0.5rem !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+}
+
+.file-list-title {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  color: #166534 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.file-list ul {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.file-list li {
+  font-size: 0.875rem !important;
+  color: #166534 !important;
+  padding: 0.25rem 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.file-size {
+  color: #6b7280 !important;
+  font-size: 0.75rem !important;
+}
+
+/* ✅ FIXED: Modal buttons */
+.modal-buttons {
+  display: flex !important;
+  gap: 1rem !important;
+  padding: 1.5rem 2rem !important;
+  border-top: 1px solid #e5e7eb !important;
+  background: #f9fafb !important;
+}
+
+.modal-buttons .btn {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+}
+
+/* ✅ Extracted data modal - larger size */
+.modal-content.modal-large {
+  max-width: 900px !important;
+}
+
+/* ✅ Alert styles */
+.alert {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.75rem !important;
+  padding: 1rem !important;
+  border-radius: 0.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.alert-info {
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  color: #1e40af !important;
+}
+
+.alert-error {
+  background: #fee2e2 !important;
+  border: 1px solid #fecaca !important;
+  color: #dc2626 !important;
+}
+
+.alert p {
+  margin: 0 !important;
+  font-size: 0.875rem !important;
+}
+
+/* ✅ Progress bar */
+.progress-container {
+  margin-bottom: 1.5rem !important;
+  padding: 1rem !important;
+  background: #f0f9ff !important;
+  border-radius: 0.5rem !important;
+}
+
+.progress-bar-wrapper {
+  width: 100% !important;
+  height: 8px !important;
+  background: #e5e7eb !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  margin-top: 0.5rem !important;
+}
+
+.progress-bar-fill {
+  height: 100% !important;
+  background: #2563eb !important;
+  transition: width 0.3s ease !important;
+}
+
+/* ✅ Responsive adjustments */
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 95% !important;
+    margin: 1rem !important;
+  }
+  
+  .modal-header {
+    padding: 1rem !important;
+  }
+  
+  .modal-body {
+    padding: 1rem !important;
+  }
+  
+  .modal-title {
+    font-size: 1.25rem !important;
+  }
+  
+  .modal-buttons {
+    flex-direction: column !important;
+    padding: 1rem !important;
+  }
+}
+
+/* ✅ Ensure modal is above everything */
+.modal-overlay {
+  z-index: 99999 !important;
+}
+
+/* ✅ Prevent body scroll when modal is open */
+body.modal-open {
+  overflow: hidden !important;
+}

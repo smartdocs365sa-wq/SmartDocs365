@@ -1,0 +1,130 @@
+<!-- ============================================
+     FILE: public/index.html
+     ============================================ -->
+     <!DOCTYPE html>
+     <html lang="en">
+       <head>
+         <meta charset="utf-8" />
+         <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+         <meta name="viewport" content="width=device-width, initial-scale=1" />
+         <meta name="theme-color" content="#667eea" />
+         <meta
+           name="description"
+           content="SmartDocs365 - Manage your insurance policies with AI-powered document extraction. Upload, extract, and manage insurance documents effortlessly."
+         />
+         <meta name="keywords" content="insurance, policy management, document extraction, AI, SmartDocs365" />
+         <meta name="author" content="SmartDocs365" />
+         
+         <!-- Open Graph Meta Tags for Social Media -->
+         <meta property="og:title" content="SmartDocs365 - Insurance Policy Management" />
+         <meta property="og:description" content="Manage your insurance policies with AI-powered document extraction" />
+         <meta property="og:type" content="website" />
+         <meta property="og:url" content="https://smartdocs365.com" />
+         
+         <!-- Apple Touch Icon -->
+         <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+         
+         <!-- Manifest -->
+         <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+         
+         <!-- Google Fonts - Inter -->
+         <link rel="preconnect" href="https://fonts.googleapis.com">
+         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+         
+         <title>SmartDocs365 - Insurance Policy Management</title>
+         
+         <style>
+           /* Loading Screen Styles */
+           #root-loader {
+             position: fixed;
+             top: 0;
+             left: 0;
+             width: 100%;
+             height: 100%;
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             justify-content: center;
+             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+             z-index: 9999;
+             transition: opacity 0.3s ease-out;
+           }
+           
+           #root-loader.hide {
+             opacity: 0;
+             pointer-events: none;
+           }
+           
+           .loader-spinner {
+             width: 50px;
+             height: 50px;
+             border: 5px solid rgba(255, 255, 255, 0.3);
+             border-top-color: white;
+             border-radius: 50%;
+             animation: spin 1s linear infinite;
+           }
+           
+           @keyframes spin {
+             to { transform: rotate(360deg); }
+           }
+           
+           .loader-text {
+             margin-top: 20px;
+             color: white;
+             font-family: 'Inter', sans-serif;
+             font-size: 16px;
+             font-weight: 600;
+           }
+           
+           /* Prevent FOUC (Flash of Unstyled Content) */
+           body {
+             margin: 0;
+             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+               'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+               sans-serif;
+             -webkit-font-smoothing: antialiased;
+             -moz-osx-font-smoothing: grayscale;
+           }
+           
+           code {
+             font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+               monospace;
+           }
+         </style>
+       </head>
+       <body>
+         <noscript>
+           <div style="padding: 20px; text-align: center; font-family: Arial, sans-serif;">
+             <h2>JavaScript Required</h2>
+             <p>You need to enable JavaScript to run this application.</p>
+             <p>Please enable JavaScript in your browser settings and reload the page.</p>
+           </div>
+         </noscript>
+         
+         <!-- Loading Screen -->
+         <div id="root-loader">
+           <div class="loader-spinner"></div>
+           <div class="loader-text">Loading SmartDocs365...</div>
+         </div>
+         
+         <!-- React Root -->
+         <div id="root"></div>
+         
+         <script>
+           // Hide loader when React app mounts
+           window.addEventListener('load', function() {
+             setTimeout(function() {
+               const loader = document.getElementById('root-loader');
+               if (loader) {
+                 loader.classList.add('hide');
+                 setTimeout(function() {
+                   loader.style.display = 'none';
+                 }, 300);
+               }
+             }, 500);
+           });
+         </script>
+       </body>
+     </html>
+     

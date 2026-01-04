@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invalid or Expired Time</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 60%;
+      margin: 100px auto;
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 40px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #e74c3c;
+    }
+    p {
+      font-size: 18px;
+      color: #555;
+      margin-bottom: 20px;
+    }
+    .close-btn {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #e74c3c;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+    .close-btn:hover {
+      background-color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Invalid or Expired Time</h1>
+    <p>Sorry, Something went wrong or has time expired.</p>
+    <button onclick="closeTab()" class="close-btn">Go To Home Page</button>
+
+    <script>
+      function closeTab() {
+        window.open('https://smartdocs365.com');
+      }
+    </script>
+  </div>
+</body>
+</html>
+
