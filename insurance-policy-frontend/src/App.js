@@ -1,12 +1,12 @@
 // ============================================
 // FILE: insurance-policy-frontend/src/App.js
-// ✅ FIXED: Added Footer to show on all pages
+// ✅ FIXED: Added missing routes for Help, Contact, & Privacy
 // ============================================
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/common/Navbar';
-import Footer from './components/common/Footer'; // ✅ 1. IMPORT FOOTER
+import Footer from './components/common/Footer';
 import Loader from './components/common/Loader';
 
 // Pages
@@ -19,6 +19,11 @@ import AdminPanel from './pages/AdminPanel';
 import Subscription from './pages/Subscription';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
+
+// ✅ IMPORT MISSING PAGES
+import ContactUs from './pages/ContactUs';
+import HelpCenter from './pages/HelpCenter';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 // Protected Route Wrapper
 const PrivateRoute = ({ children }) => {
@@ -39,7 +44,7 @@ const AdminRoute = ({ children }) => {
 // Layout Component (Hides Navbar on Public Pages)
 const Layout = ({ children }) => {
   const location = useLocation();
-  // Don't show Navbar on Home, Login, or Register pages
+  // Don't show Navbar on Home, Login, or Register
   const hideNavbarRoutes = ['/', '/login', '/register'];
   const showNavbar = !hideNavbarRoutes.includes(location.pathname);
 
@@ -51,7 +56,7 @@ const Layout = ({ children }) => {
         {children}
       </main>
 
-      {/* ✅ 2. RENDER FOOTER HERE */}
+      {/* Footer shows on all pages */}
       <Footer />
     </div>
   );
@@ -67,6 +72,11 @@ const App = () => {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            
+            {/* ✅ NEW PUBLIC ROUTES (Fixes 404 Errors) */}
+            <Route path="/contact" element={<ContactUs />} />
+            <Route path="/help" element={<HelpCenter />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             
             {/* Protected Routes */}
             <Route path="/dashboard" element={
