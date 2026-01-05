@@ -1,80 +1,100 @@
 // ============================================
-// FILE: insurance-policy-frontend/src/App.js
+// FILE: Backend/app.js
+// ✅ FIXED: Added PUBLIC Blog Route for Home Page
 // ============================================
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const path = require("path");
+const cron = require("node-cron");
+const fs = require("fs");
+const importExcelDataRoute = require('./routes/apis/importExcelData');
 
-// Components
-import Navbar from './components/common/Navbar';
-import Footer from './components/common/Footer';
-import ScrollToTop from './components/common/ScrollToTop'; // ✅ 1. Import Here
-import Loader from './components/common/Loader';
+// ✅ Import Blog Model for Public Route
+const Blog = require('./models/blogModel');
 
-// Pages
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
-import ForgotPassword from './components/auth/ForgotPassword';
-import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
-import Policies from './pages/Policies';
-import Subscription from './pages/Subscription';
-import AdminPanel from './pages/AdminPanel';
-import Profile from './pages/Profile';
-import NotFound from './pages/NotFound';
-import HelpCenter from './pages/HelpCenter';
-import ContactUs from './pages/ContactUs';
-import PrivacyPolicy from './pages/PrivacyPolicy';
+// importing middlewares
+const allowedOrigins = require("./config/allowedOrigins");
+const credentials = require("./middleware/credentials");
+const errorHandler = require("./errorHandler");
+const verifyJWT = require('./middleware/verifyJWT');
 
-// ... (Keep your ProtectedRoute, AdminRoute, and PublicRoute components exactly as they were) ...
-const ProtectedRoute = ({ children }) => { /* ... code ... */ const { user, loading } = useAuth(); if (loading) return <Loader />; if (!user) return <Navigate to="/login" replace />; return children; };
-const PublicRoute = ({ children }) => { /* ... code ... */ const { user, loading } = useAuth(); if (loading) return <Loader />; if (user && (window.location.pathname === '/login' || window.location.pathname === '/register')) return <Navigate to="/dashboard" replace />; return children; };
-const AdminRoute = ({ children }) => { /* ... code ... */ const { user, loading } = useAuth(); if (loading) return <Loader />; if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) return <Navigate to="/dashboard" replace />; return children; };
+// ✅ Import subscription cron
+const { checkExpiringSubscriptions } = require("./subscriptionCron");
 
-function AppRoutes() {
-  const { user } = useAuth();
+// app setup
+const app = express();
+const PORT = process.env.PORT || 3033;
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {user && <Navbar />}
-      
-      <div style={{ flex: 1 }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-          <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+// Configure CORS options
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log("Blocked by CORS:", origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  optionsSuccessStatus: 200,
+  credentials: true
+};
 
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
-          <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          
-          <Route path="/help" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
-          <Route path="/contact" element={<ProtectedRoute><ContactUs /></ProtectedRoute>} />
-          <Route path="/privacy" element={<ProtectedRoute><PrivacyPolicy /></ProtectedRoute>} />
+// ============================================
+// MIDDLEWARE ORDER IS IMPORTANT
+// ============================================
 
-          <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </div>
+app.use(credentials);
+app.use(cors(corsOptions));
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, "/public")));
+// Serve uploads folder publicly
+app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
 
-      <Footer />
-    </div>
-  );
-}
+// ============================================
+// ✅ NEW PUBLIC ROUTE: Get Latest Blogs
+// ============================================
+app.get('/api/public/blogs', async (req, res) => {
+  try {
+    // Fetch latest 3 blogs, sorted by newest first
+    // We use .find() directly to bypass authentication
+    const blogs = await Blog.find({}).sort({ _id: -1 }).limit(3);
+    res.json({ success: true, data: blogs });
+  } catch (error) {
+    console.error("Public Blog Fetch Error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch blogs" });
+  }
+});
 
-function App() {
-  return (
-    <Router>
-      {/* ✅ 2. Add ScrollToTop here, immediately inside Router */}
-      <ScrollToTop />
-      
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </Router>
-  );
-}
+// ============================================
+// ROUTES
+// ============================================
 
-export default App;
+app.use("/api", require("./routes/handler"));
+app.use('/import-excel-data', importExcelDataRoute);
+
+// handling error pages
+app.use(errorHandler);
+
+// Database connection
+require("./middleware/db");
+
+// ✅ START SUBSCRIPTION CRON JOB
+cron.schedule("0 9 * * *", () => {
+  console.log("🔔 Running daily subscription expiry check at 9 AM...");
+  checkExpiringSubscriptions();
+});
+
+console.log("🚀 Running initial subscription check...");
+checkExpiringSubscriptions();
+
+app.listen(PORT, () => {
+  console.log("✅ App is listening on port", PORT);
+  console.log("✅ Public Blog Route is Active");
+});
