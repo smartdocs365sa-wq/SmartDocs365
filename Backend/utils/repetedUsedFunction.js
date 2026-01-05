@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ FIXED: Uses your Gmail credentials from Render
+// ✅ FIXED: Matches GitHub filename 'ResetPasswordMail.html'
 // ============================================
 const nodemailer = require("nodemailer");
 const path = require("path");
@@ -9,8 +9,10 @@ const Handlebars = require('handlebars');
 const crypto = require('crypto');
 
 // HTML Template Paths
+// ✅ FIXED: Capital 'R' to match your GitHub file
+const ResetPasswordMail = path.join(__dirname, "../html/", "ResetPasswordMail.html"); 
+
 const welcomeMessageFile = path.join(__dirname, "../html/", "welcomeEmail.html");
-const ResetPasswordMail = path.join(__dirname, "../html/", "resetPasswordMail.html");
 const sendOtpFile = path.join(__dirname, "../html/", "otpMail.html");
 const expiryMailFile = path.join(__dirname, "../html/", "expiryMail.html");
 const expiryPolicyMailFile = path.join(__dirname, "../html/", "policyExpireMail.html");
@@ -25,8 +27,8 @@ const baseUrl = "https://smartdocs365-backend.onrender.com/api/";
 const transporter = nodemailer.createTransport({
   service: 'gmail', 
   auth: {
-    user: process.env.GMAIL_USER, // Will use smartdocs365sa@gmail.com
-    pass: process.env.GMAIL_PASS, // Will use the App Password
+    user: process.env.GMAIL_USER, // Uses smartdocs365sa@gmail.com
+    pass: process.env.GMAIL_PASS, // Uses the App Password (kklqwfwzdkpgffom)
   },
 });
 
