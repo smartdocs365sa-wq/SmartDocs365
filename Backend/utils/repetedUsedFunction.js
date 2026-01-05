@@ -10,7 +10,7 @@ const crypto = require('crypto');
 
 // HTML Template Paths
 const welcomeMessageFile = path.join(__dirname, "../html/", "welcomeEmail.html");
-const ResetPasswordMail = path.join(__dirname, "../html/", "ResetPasswordMail.html");
+const ResetPasswordMail = path.join(__dirname, "../html/", "resetPasswordMail.html");
 const sendOtpFile = path.join(__dirname, "../html/", "otpMail.html");
 const expiryMailFile = path.join(__dirname, "../html/", "expiryMail.html");
 const expiryPolicyMailFile = path.join(__dirname, "../html/", "policyExpireMail.html");
