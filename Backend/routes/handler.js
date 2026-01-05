@@ -1,5 +1,6 @@
 // ============================================
-// FILE: Backend/routes/handler.js (FIXED BLOG ROUTE)
+// FILE: Backend/routes/handler.js
+// ✅ FIXED: Added Public Blog Route & Blog Model
 // ============================================
 
 const express = require("express");
@@ -12,6 +13,8 @@ const { spawn } = require("child_process");
 const pdfDetailsModel = require("../models/pdfDetailsModel");
 const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel");
+// ✅ Added Blog Model Import
+const blogModel = require("../models/blogModel"); 
 const { v4 } = require("uuid");
 
 /* ===============================
@@ -47,20 +50,27 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "FINAL-FIXED-V4" });
+  res.json({ status: "success", version: "FINAL-FIXED-V5" });
 });
 
 /* ===============================
-   PUBLIC ROUTES
+   PUBLIC ROUTES (No Login Required)
 ================================ */
 router.use("/user", require("./apis/register"));
 router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
-// Note: This public route is kept for backup, but Frontend uses the protected one now
-router.use("/blogs-direct", require("./admin/blogs")); 
-router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));
-router.use("/questions-direct", require("./apis/userQuestions"));
-router.use("/recharge-status-direct", require("./apis/recharge"));
+
+// ✅ NEW: Public Blogs Route (Fetches active blogs for Home Page)
+router.get("/public/blogs", async (req, res) => {
+  try {
+    // Fetch only active blogs, sorted by newest first
+    const blogs = await blogModel.find({ is_active: true }).sort({ created_at: -1 });
+    res.json({ success: true, data: blogs });
+  } catch (error) {
+    console.error("Public Blog Fetch Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching blogs" });
+  }
+});
 
 router.get("/download-demo-excel", (req, res) => {
   const demoPath = path.join(__dirname, "../DEMO.xlsx");
@@ -78,21 +88,18 @@ router.use(verifyJWT);
 
 router.use("/user", require("./apis/user"));
 router.use("/subcription-plan", require("./admin/subcriptionPlan"));
-
-// ✅ FIXED: Route updated to match Frontend URL (/api/admin/blogs/...)
-router.use("/admin/blogs", require("./admin/blogs"));
-
+router.use("/admin/blogs", require("./admin/blogs")); // Admin management route
 router.use("/report", require("./admin/report"));
 router.use("/pdf", require("./apis/pdfData"));
 router.use("/recharge", require("./apis/recharge"));
 router.use("/questions", require("./apis/userQuestions"));
 router.use("/import-excel-data", require("./apis/importExcelData"));
 
-
 /* ===============================
    PDF UPLOAD ROUTE
 ================================ */
 router.post("/upload-pdf", upload.any(), async (req, res) => {
+  // ... (Keep existing upload logic exactly as is) ...
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ success: false, message: "No file uploaded" });
   }

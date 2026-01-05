@@ -1,6 +1,6 @@
 // ============================================
 // FILE: insurance-policy-frontend/src/App.js
-// ✅ FIXED: Added missing routes for Help, Contact, & Privacy
+// ✅ FIXED: Hides global footer on Home Page
 // ============================================
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
@@ -20,7 +20,6 @@ import Subscription from './pages/Subscription';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 
-// ✅ IMPORT MISSING PAGES
 import ContactUs from './pages/ContactUs';
 import HelpCenter from './pages/HelpCenter';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -41,12 +40,16 @@ const AdminRoute = ({ children }) => {
     : <Navigate to="/dashboard" />;
 };
 
-// Layout Component (Hides Navbar on Public Pages)
+// Layout Component
 const Layout = ({ children }) => {
   const location = useLocation();
+  
   // Don't show Navbar on Home, Login, or Register
   const hideNavbarRoutes = ['/', '/login', '/register'];
   const showNavbar = !hideNavbarRoutes.includes(location.pathname);
+
+  // ✅ NEW: Hide Global Footer on Home Page (We will use a simple one inside Home.jsx)
+  const hideGlobalFooter = location.pathname === '/';
 
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -56,8 +59,8 @@ const Layout = ({ children }) => {
         {children}
       </main>
 
-      {/* Footer shows on all pages */}
-      <Footer />
+      {/* Footer shows on all pages EXCEPT Home */}
+      {!hideGlobalFooter && <Footer />}
     </div>
   );
 };
@@ -72,30 +75,18 @@ const App = () => {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            
-            {/* ✅ NEW PUBLIC ROUTES (Fixes 404 Errors) */}
             <Route path="/contact" element={<ContactUs />} />
             <Route path="/help" element={<HelpCenter />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             
             {/* Protected Routes */}
-            <Route path="/dashboard" element={
-              <PrivateRoute><Dashboard /></PrivateRoute>
-            } />
-            <Route path="/policies" element={
-              <PrivateRoute><Policies /></PrivateRoute>
-            } />
-            <Route path="/subscription" element={
-              <PrivateRoute><Subscription /></PrivateRoute>
-            } />
-            <Route path="/profile" element={
-              <PrivateRoute><Profile /></PrivateRoute>
-            } />
+            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/policies" element={<PrivateRoute><Policies /></PrivateRoute>} />
+            <Route path="/subscription" element={<PrivateRoute><Subscription /></PrivateRoute>} />
+            <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
 
             {/* Admin Routes */}
-            <Route path="/admin" element={
-              <AdminRoute><AdminPanel /></AdminRoute>
-            } />
+            <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
             
             {/* 404 Page */}
             <Route path="*" element={<NotFound />} />
