@@ -1,142 +1,297 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ FIXED: Hardcoded HTML Template (No File Path Errors)
+// ✅ FIXED: Matches GitHub filename 'ResetPasswordMail.html'
 // ============================================
 const nodemailer = require("nodemailer");
+const path = require("path");
+const fs = require("fs");
 const Handlebars = require('handlebars');
 const crypto = require('crypto');
 
-// Secrets & Config
-const secretKey = process.env.SECRET_KEY || 'sdlfklfas6df5sd4fsdf5';
-const algorithm = 'aes-256-cbc';
-const baseUrl = "https://smartdocs365-backend.onrender.com/api/";
+// HTML Template Paths
+// ✅ FIXED: Capital 'R' to match your GitHub file
+const ResetPasswordMail = path.join(__dirname, "../html/", "ResetPasswordMail.html"); 
 
-// ✅ 1. EMAIL TRANSPORTER
+const welcomeMessageFile = path.join(__dirname, "../html/", "welcomeEmail.html");
+const sendOtpFile = path.join(__dirname, "../html/", "otpMail.html");
+const expiryMailFile = path.join(__dirname, "../html/", "expiryMail.html");
+const expiryPolicyMailFile = path.join(__dirname, "../html/", "policyExpireMail.html");
+
+const secretKey = process.env.SECRET_KEY || 'sdlfklfas6df5sd4fsdf5'; 
+const algorithm = 'aes-256-cbc';
+const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
+
+/* ============================================================
+   ✅ EMAIL TRANSPORTER (Connected to Gmail)
+   ============================================================ */
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: 'gmail', 
   auth: {
-    user: process.env.GMAIL_USER, // smartdocs365sa@gmail.com
-    pass: process.env.GMAIL_PASS, // kklqwfwzdkpgffom
+    user: process.env.GMAIL_USER, // Uses smartdocs365sa@gmail.com
+    pass: process.env.GMAIL_PASS, // Uses the App Password (kklqwfwzdkpgffom)
   },
 });
 
-// ✅ 2. HARDCODED HTML TEMPLATE (Prevents "File Not Found" Crash)
-const RESET_PASSWORD_TEMPLATE = `
-<td style="padding: 40px 0">
-    <table style="width: 100%; max-width: 620px; margin: 0 auto">
-        <tbody>
-            <tr>
-                <td style="text-align: center; padding-bottom: 25px">
-                    <h2 style="color: #4f46e5;">SmartDocs365</h2>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-    <table style="width: 100%; max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden;">
-        <tbody>
-            <tr>
-                <td style="padding: 30px 30px 20px">
-                    <p style="margin-bottom: 10px">Dear {{ name }},</p>
-                    <p style="margin-bottom: 10px">You requested to reset your password.</p>
-                    <p style="margin-bottom: 20px">Click the button below to proceed:</p>
-                    
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="https://smartdocs365-backend.onrender.com/api/update/reset-password/{{ resetToken }}" 
-                           style="background: #4f46e5; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: bold;">
-                            Reset Password
-                        </a>
-                    </div>
-                    
-                    <p style="font-size: 14px; color: #dc2626; background: #fee2e2; padding: 10px; border-radius: 5px;">
-                        ⚠️ Link expires in 5 minutes.
-                    </p>
-                    
-                    <p style="margin-top: 30px;">Warm regards,<br>Team SmartDocs365</p>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</td>
-`;
+/* ============================================================
+   EMAIL FUNCTIONS
+   ============================================================ */
 
-// ✅ 3. SEND RESET EMAIL FUNCTION
-async function sendResetEmail(email, name, resetToken) {
+function sendWelcomeMail(email, name) {
+  fs.readFile(welcomeMessageFile, "utf8", (err, template) => {
+    if (err) return console.error("Missing Template:", err);
+
+    const renderedTemplate = template.replace("{{{ name }}}", name);
+
+    const mailOptions = {
+      from: `"SmartDocs365" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: "Welcome to SmartDocs365!",
+      html: renderedTemplate,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("Error sending Welcome email:", error);
+      else console.log("Welcome Email sent:", info.response);
+    });
+  });
+}
+
+function expiredMail(email, name, date) {
   try {
-    console.log(`📨 Sending reset email to: ${email}`);
+    const templateData = fs.readFileSync(expiryMailFile, 'utf8');
+    const template = Handlebars.compile(templateData);
+    const renderedTemplate = template({ name, date });
 
-    // Compile the hardcoded template
-    const template = Handlebars.compile(RESET_PASSWORD_TEMPLATE);
-    const htmlToSend = template({ name, resetToken });
+    const mailOptions = {
+      from: `"SmartDocs365" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: "Action Required: Subscription Expiring Soon",
+      html: renderedTemplate,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("Error sending Expiry email:", error);
+      else console.log("Expiry Email sent:", info.response);
+    });
+  } catch (err) {
+    console.error("Template Error (Expiry):", err.message);
+  }
+}
+
+function expiredPolicyMail(email, name, date, number, days) {
+  try {
+    const templateData = fs.readFileSync(expiryPolicyMailFile, 'utf8');
+    const template = Handlebars.compile(templateData);
+    const renderedTemplate = template({ name, number, date, days });
+
+    const mailOptions = {
+      from: `"SmartDocs365" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: "Policy Expiry Alert - SmartDocs365",
+      html: renderedTemplate,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("Error sending Policy Expiry email:", error);
+      else console.log("Policy Expiry Email sent:", info.response);
+    });
+  } catch (err) {
+    console.error("Template Error (Policy Expiry):", err.message);
+  }
+}
+
+function sendOtpCode(email, otpCode) {
+  fs.readFile(sendOtpFile, "utf8", (err, template) => {
+    if (err) return console.error("Missing OTP Template:", err);
+
+    const renderedTemplate = template.replace("{{{ otpCode }}}", otpCode);
 
     const mailOptions = {
       from: `"SmartDocs365 Security" <${process.env.GMAIL_USER}>`,
       to: email,
-      subject: 'Reset Your Password',
-      html: htmlToSend,
+      subject: "Your OTP Verification Code",
+      html: renderedTemplate,
     };
 
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("Error sending OTP:", error);
+      else console.log("OTP Email sent:", info.response);
+    });
+  });
+}
+
+// ✅ FIXED: Async/Await logic for Password Reset
+async function sendResetEmail(email, name, resetToken) {
+  try {
+    console.log(`Attempting to send reset email to: ${email}`);
+    
+    // Check if template exists
+    if (!fs.existsSync(ResetPasswordMail)) {
+      console.error("CRITICAL: ResetPasswordMail.html not found at", ResetPasswordMail);
+      return false;
+    }
+
+    const templateData = fs.readFileSync(ResetPasswordMail, 'utf8');
+    const template = Handlebars.compile(templateData);
+    
+    // Render with dynamic data
+    const renderedTemplate = template({ name, resetToken, baseUrl });
+
+    const mailOptions = {
+      from: `"SmartDocs365 Support" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: 'Reset Your Password',
+      html: renderedTemplate,
+    };
+
+    // Send
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully:', info.response);
-    return true;
+    console.log('✅ Reset Email sent successfully:', info.response);
+    return true; 
 
   } catch (error) {
-    console.error('❌ CRITICAL EMAIL ERROR:', error);
+    console.error('❌ Failed to send reset email:', error);
     return false;
   }
 }
 
+async function sendMailToSupportMail(payload) {
+    const currentDate = new Date();
+    const formattedDate = currentDate.toLocaleString('en-GB', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: 'numeric',
+    });
+
+    const attachments = payload.file_name ? [{ filename: payload.file_name, path: payload.file_path }] : [];
+
+    const mailOptions = {
+      from: payload?.email_address, 
+      replyTo: payload?.email_address,
+      to: process.env.GMAIL_USER, // Send to yourself (Support)
+      subject: 'New User Inquiry / Support Request',
+      text: `Dear Support,\n\nDate: ${formattedDate}\nName: ${payload?.full_name}\nEmail: ${payload?.email_address}\nMobile: ${payload?.mobile}\n\nMessage:\n${payload?.description}\n`, 
+      attachments: attachments,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("Error sending Support email:", error);
+      else console.log("Support Email sent:", info.response);
+    });
+}
+
 /* ============================================================
-   OTHER FUNCTIONS (Kept as is)
+   HELPER FUNCTIONS
    ============================================================ */
+
+function addDaysToCurrentDate(days) {
+  const currentDate = new Date();
+  const estOffset = -5 * 60 * 60 * 1000;
+  const estDate = new Date(currentDate.getTime() + estOffset);
+  estDate.setDate(estDate.getDate() + days);
+  
+  const year = estDate.getFullYear();
+  const month = (estDate.getMonth() + 1).toString().padStart(2, '0');
+  const day = estDate.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getCurrentDateTime() {
   const now = new Date();
-  return { 
-    dateString: now.toISOString().split('T')[0], 
-    timeString: now.toTimeString().split(' ')[0] 
-  };
+  const estTime = new Date(now.getTime() - 5 * 60 * 60 * 1000);
+  
+  const dateString = estTime.toISOString().split('T')[0];
+  const timeString = estTime.toTimeString().split(' ')[0];
+  
+  return { dateString, timeString, dateAndTimeString: `${dateString} ${timeString}` };
 }
+
+function namingValidation(str) { return /^[a-zA-Z\s]+$/.test(str); }
+function isEmailValid(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function getOffset(currentPage = 1, listPerPage) { return (currentPage - 1) * listPerPage; }
+function emptyOrRows(rows) { return !rows ? [] : rows; }
 
 const encryptData = (data) => {
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(algorithm, Buffer.from(secretKey), iv);
-  let input = typeof data !== 'string' ? JSON.stringify(data) : data;
-  let encrypted = cipher.update(input, 'utf-8', 'hex');
-  encrypted += cipher.final('hex');
-  return { iv: iv.toString('hex'), encryptedData: encrypted };
+  let inputData = typeof data !== 'string' ? JSON.stringify(data) : data;
+  let encryptedData = cipher.update(inputData, 'utf-8', 'hex');
+  encryptedData += cipher.final('hex');
+  return { iv: iv.toString('hex'), encryptedData };
 };
 
 const decryptData = (data) => {
-  const decipher = crypto.createDecipheriv(algorithm, Buffer.from(secretKey), Buffer.from(data.iv, 'hex'));
-  let decrypted = decipher.update(data.encryptedData, 'hex', 'utf-8');
-  decrypted += decipher.final('utf-8');
-  try { return JSON.parse(decrypted); } catch { return decrypted; }
+  const {iv, encryptedData} = data;
+  const decipher = crypto.createDecipheriv(algorithm, Buffer.from(secretKey), Buffer.from(iv, 'hex'));
+  let decryptedData = decipher.update(encryptedData, 'hex', 'utf-8');
+  decryptedData += decipher.final('utf-8');
+  try { return JSON.parse(decryptedData); } catch (e) { return decryptedData; }
 };
 
-// Placeholder exports for other functions to prevent crashes if they are called elsewhere
-const placeholder = () => {}; 
-// (If you need the other email functions like welcome/otp/expiry, paste them back below, 
-// but for now, let's fix the Reset Password issue first).
+function validateZIPCode(zip) { return /^\d{5}$/.test(zip); }
+
+function deleteFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error(`Error deleting file: ${err.message}`);
+    return false;
+  }
+}
+
+function priceBreakDown(price, zip) {
+  let zipCode = (zip || "23123").toString();
+  let firstChar = zipCode.charAt(0);
+  let shippingCost = 30;
+  
+  if (['2','3'].includes(firstChar)) shippingCost = 40;
+  else if (['4','5'].includes(firstChar)) shippingCost = 50;
+  else if (['6','7'].includes(firstChar)) shippingCost = 60;
+  else if (['8','9'].includes(firstChar)) shippingCost = 70;
+
+  let demandeyCharges = +price * 0.07;
+  let processingFee = (+price * 0.0075) + 0.10;
+  let stateTax = +price * 0.0625;
+  let actualTotal = +price + shippingCost + demandeyCharges + stateTax + processingFee;
+
+  return {
+    shippingCost: shippingCost.toFixed(2),
+    demandeyCharges: demandeyCharges.toFixed(2),
+    stateTax: stateTax.toFixed(2),
+    processingFee: processingFee.toFixed(2),
+    actualTotal: actualTotal.toFixed(2)
+  };
+}
+
+function validateCardNumber(num) {
+  let s = num.replace(/\D/g, '');
+  if (!/^\d{13,16}$/.test(s)) return false;
+  let sum = 0, isEven = false;
+  for (let i = s.length - 1; i >= 0; i--) {
+    let d = parseInt(s.charAt(i), 10);
+    if (isEven && (d *= 2) > 9) d -= 9;
+    sum += d;
+    isEven = !isEven;
+  }
+  return sum % 10 === 0;
+}
+
+function isFutureDate(cardDate) {
+  const [m, y] = cardDate.split('/').map(n => parseInt(n, 10));
+  const now = new Date();
+  const curY = now.getFullYear() % 100;
+  const curM = now.getMonth() + 1;
+  return y > curY || (y === curY && m > curM);
+}
+
+function isValidDate(d) { return !isNaN(Date.parse(d)); }
 
 module.exports = {
-  getCurrentDateTime,
-  encryptData,
-  decryptData,
-  sendResetEmail,
-  // Exporting dummies for others to prevent 'function not found' errors if used
-  namingValidation: (str) => /^[a-zA-Z\s]+$/.test(str),
-  isEmailValid: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-  getOffset: (p, l) => (p - 1) * l,
-  emptyOrRows: (r) => r || [],
-  validateZIPCode: (z) => /^\d{5}$/.test(z),
-  deleteFile: () => true,
-  addDaysToCurrentDate: () => new Date().toISOString(),
-  priceBreakDown: () => ({}),
-  validateCardNumber: () => true,
-  isFutureDate: () => true,
-  isValidDate: () => true,
-  sendOtpCode: placeholder,
-  sendWelcomeMail: placeholder,
-  expiredMail: placeholder,
-  expiredPolicyMail: placeholder,
-  sendMailToSupportMail: placeholder
+  getCurrentDateTime, namingValidation, isEmailValid, getOffset, emptyOrRows,
+  sendWelcomeMail, encryptData, decryptData, validateZIPCode, deleteFile,
+  addDaysToCurrentDate, priceBreakDown, sendResetEmail, validateCardNumber,
+  isFutureDate, isValidDate, sendOtpCode, expiredMail, expiredPolicyMail,
+  sendMailToSupportMail
 };
