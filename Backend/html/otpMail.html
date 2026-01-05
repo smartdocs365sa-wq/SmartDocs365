@@ -3,23 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>OTP Verification</title>
-    <style>
-        body { font-family: sans-serif; background-color: #f4f4f4; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; text-align: center; }
-        .otp { font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1e40af; margin: 20px 0; background: #eff6ff; padding: 15px; border-radius: 8px; }
-    </style>
 </head>
-<body>
-    <div class="container">
+<body style="font-family: sans-serif; background: #f4f4f4; padding: 20px;">
+    <div style="max-width: 500px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; text-align: center;">
         <img src="https://smartdocs365-backend.onrender.com/logo.jpg" alt="SmartDocs365" style="height: 60px; margin-bottom: 20px;">
-        <h2>Verify Your Email</h2>
-        <p>Use the OTP below to complete your registration:</p>
-        <div class="otp">{{{ otpCode }}}</div>
-        <p style="color: #666; font-size: 14px;">Valid for 10 minutes only.</p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="font-size: 12px; color: #999;">
-            © SmartDocs365 | <a href="https://smartdocs365.com" style="color: #1e40af;">Visit Website</a>
-        </p>
+        <h2 style="color: #333;">Verify Your Email</h2>
+        <p style="color: #666;">Your One-Time Password (OTP) is:</p>
+        <div style="background: #eef2ff; color: #4f46e5; font-size: 32px; font-weight: bold; letter-spacing: 5px; padding: 15px; margin: 20px 0; border-radius: 8px;">
+            {{{ otpCode }}}
+        </div>
+        <p style="font-size: 13px; color: #dc2626;">⚠️ Valid for 10 minutes only</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        <p style="font-size: 12px; color: #999;">© 2026 SmartDocs365</p>
     </div>
 </body>
 </html>
