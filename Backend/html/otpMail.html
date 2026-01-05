@@ -1,83 +1,25 @@
-<!-- ============================================
-     otpMail.html - FIXED
-     ============================================ -->
-     <!DOCTYPE html>
-     <html lang="en">
-     <head>
-         <meta charset="UTF-8">
-         <title>OTP Verification - SmartDocs365</title>
-         <style>
-             body {
-                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                 margin: 0;
-                 padding: 0;
-                 background-color: #f4f4f4;
-             }
-             .container {
-                 width: 80%;
-                 max-width: 600px;
-                 margin: 20px auto;
-                 padding: 20px;
-                 background-color: #fff;
-                 border-radius: 8px;
-                 box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-             }
-             .logo {
-                 text-align: center;
-                 margin-bottom: 20px;
-             }
-             .logo img {
-                 max-width: 150px;
-                 height: auto;
-             }
-             h2 {
-                 text-align: center;
-                 color: #333;
-                 margin-bottom: 20px;
-             }
-             p {
-                 text-align: center;
-                 margin-bottom: 20px;
-                 color: #666;
-             }
-             .otp-code {
-                 text-align: center;
-                 font-size: 28px;
-                 font-weight: bold;
-                 color: #6576ff;
-                 margin-bottom: 30px;
-                 background: #f0f4ff;
-                 padding: 15px;
-                 border-radius: 8px;
-             }
-             .footer {
-                 text-align: center;
-                 margin-top: 30px;
-                 font-size: 12px;
-                 color: #999;
-             }
-             .footer a {
-                 color: #6576ff;
-                 text-decoration: none;
-             }
-         </style>
-     </head>
-     <body>
-         <div class="container">
-             <div class="logo">
-                 <img src="http://localhost:3033/logo.jpg" alt="SmartDocs365 Logo">
-             </div>
-             <h2>OTP Verification</h2>
-             <p>Please use the following OTP to complete your registration:</p>
-             <p class="otp-code">{{{ otpCode }}}</p>
-             <p style="font-size: 14px; color: #dc2626; background: #fee2e2; padding: 10px; border-radius: 5px;">
-                 ⚠️ This OTP is valid for 10 minutes only
-             </p>
-             <p>If you didn't request this OTP, please ignore this email.</p>
-             <div class="footer">
-                 <p>© 2024 SmartDocs365. All rights reserved.</p>
-                 <p><a href="http://localhost:3000">Visit SmartDocs365</a></p>
-             </div>
-         </div>
-     </body>
-     </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OTP Verification</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; text-align: center; }
+        .otp { font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1e40af; margin: 20px 0; background: #eff6ff; padding: 15px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="https://smartdocs365-backend.onrender.com/logo.jpg" alt="SmartDocs365" style="height: 60px; margin-bottom: 20px;">
+        <h2>Verify Your Email</h2>
+        <p>Use the OTP below to complete your registration:</p>
+        <div class="otp">{{{ otpCode }}}</div>
+        <p style="color: #666; font-size: 14px;">Valid for 10 minutes only.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+        <p style="font-size: 12px; color: #999;">
+            © SmartDocs365 | <a href="https://smartdocs365.com" style="color: #1e40af;">Visit Website</a>
+        </p>
+    </div>
+</body>
+</html>

@@ -2,76 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Plan Expired Notification - SmartDocs365</title>
+    <title>Subscription Expiry</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        .container {
-            width: 80%;
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .logo {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .logo img {
-            max-width: 150px;
-            height: auto;
-        }
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        p {
-            margin-bottom: 20px;
-            color: #666;
-            line-height: 1.6;
-        }
-        .cta-button {
-            display: block;
-            width: 50%;
-            margin: 0 auto;
-            padding: 10px 20px;
-            background-color: #6576ff;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .cta-button:hover {
-            background-color: #4854e0;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; }
+        .btn { display: inline-block; padding: 10px 20px; background-color: #6576ff; color: #fff; text-decoration: none; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">
-            <img src="https://api.smartdocs365.com/uploads/newLogo.png" alt="SmartDocs365">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="https://smartdocs365-backend.onrender.com/logo.jpg" alt="SmartDocs365" style="height: 60px;">
         </div>
-        <h2>Plan Expired - SmartDocs365</h2>
-        <p>Dear {{ name }} ,<br/>
-            This is to bring to your kind notice that your subscription is expiring on {{date}}.
-        </p>
-        <p>We would request you to renew your subscription well in time so as to maintain continuity of our services. Kindly get in touch with us in case  you need any assistance.
-        <br/><br/>Thank you for giving us an opportunity to serve you. We assure you of our best services at all times and look forward to your further association with us.
-        <br/><br/>
-        Please ignore if you have already renewed your subscription.
-        </p>
+        <h2>Subscription Expiring Soon</h2>
+        <p>Dear {{ name }},</p>
+        <p>Your subscription is set to expire on <strong>{{date}}</strong>.</p>
+        <p>To avoid service interruption, please renew your plan.</p>
         
-        <p>Renew now to regain access:</p>
-        <a href="http://www.smartdocs365.com" class="cta-button">Renew Plan</a>
-       <p>Warm Regards,<br/>SmartDocs365</p>
-
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://smartdocs365.com/subscription" class="btn">Renew Plan</a>
+        </div>
+        
+        <p>Warm Regards,<br>SmartDocs365</p>
     </div>
 </body>
 </html>
