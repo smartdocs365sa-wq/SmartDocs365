@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ FIXED: Uses Gmail Environment Variables
+// ✅ FIXED: Uses your Gmail credentials from Render
 // ============================================
 const nodemailer = require("nodemailer");
 const path = require("path");
@@ -15,18 +15,18 @@ const sendOtpFile = path.join(__dirname, "../html/", "otpMail.html");
 const expiryMailFile = path.join(__dirname, "../html/", "expiryMail.html");
 const expiryPolicyMailFile = path.join(__dirname, "../html/", "policyExpireMail.html");
 
-const secretKey = process.env.SECRET_KEY || 'sdlfklfas6df5sd4fsdf5'; // Fallback key if env missing
+const secretKey = process.env.SECRET_KEY || 'sdlfklfas6df5sd4fsdf5'; 
 const algorithm = 'aes-256-cbc';
-const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; // ✅ Updated to Render URL
+const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
 
 /* ============================================================
-   ✅ EMAIL TRANSPORTER (Uses Render Env Variables)
+   ✅ EMAIL TRANSPORTER (Connected to Gmail)
    ============================================================ */
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Built-in support for Gmail
+  service: 'gmail', 
   auth: {
-    user: process.env.GMAIL_USER, // e.g. sivamec24@gmail.com
-    pass: process.env.GMAIL_PASS, // e.g. xxxx xxxx xxxx xxxx (App Password)
+    user: process.env.GMAIL_USER, // Will use smartdocs365sa@gmail.com
+    pass: process.env.GMAIL_PASS, // Will use the App Password
   },
 });
 
@@ -162,7 +162,7 @@ async function sendMailToSupportMail(payload) {
     const attachments = payload.file_name ? [{ filename: payload.file_name, path: payload.file_path }] : [];
 
     const mailOptions = {
-      from: payload?.email_address, // User's email as sender (might be blocked by Gmail, better to put in replyTo)
+      from: payload?.email_address, 
       replyTo: payload?.email_address,
       to: process.env.GMAIL_USER, // Send to yourself (Support)
       subject: 'New User Inquiry / Support Request',
@@ -177,7 +177,7 @@ async function sendMailToSupportMail(payload) {
 }
 
 /* ============================================================
-   HELPER FUNCTIONS (Date, Encryption, Validation)
+   HELPER FUNCTIONS
    ============================================================ */
 
 function addDaysToCurrentDate(days) {
@@ -204,10 +204,9 @@ function getCurrentDateTime() {
 
 function namingValidation(str) { return /^[a-zA-Z\s]+$/.test(str); }
 function isEmailValid(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-function getOffset(currentPage = 1, listPerPage) { return (currentPage - 1) * listPerPage; } // Fixed array bracket issue
+function getOffset(currentPage = 1, listPerPage) { return (currentPage - 1) * listPerPage; }
 function emptyOrRows(rows) { return !rows ? [] : rows; }
 
-// Encrypt / Decrypt
 const encryptData = (data) => {
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(algorithm, Buffer.from(secretKey), iv);
