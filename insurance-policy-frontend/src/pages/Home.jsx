@@ -1,8 +1,7 @@
 // ============================================
 // FILE: src/pages/Home.jsx
-// ✅ FIXED: Footer links removed (Copyright only)
-// ✅ FIXED: Improved CSS (Shadows, gradients, hover effects)
-// ✅ FIXED: Blogs section fully integrated
+// ✅ FIXED: Login logic now uses direct window.location.href (Fixes double login issue)
+// ✅ FIXED: Added "Forgot Password" link in Admin Modal
 // ============================================
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -133,6 +132,7 @@ const Home = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // ✅ FIXED: Login Handler
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -143,13 +143,16 @@ const Home = () => {
       if (data.success) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
+        
         const role = data.user?.role;
+        
+        // ⚠️ CRITICAL FIX: Use window.location.href instead of navigate()
+        // This ensures a fresh state load and prevents the "double login" issue
         if (role === 'admin' || role === 'super-admin') {
-          navigate('/admin');
+          window.location.href = '/admin';
         } else {
-          navigate('/dashboard');
+          window.location.href = '/dashboard';
         }
-        setTimeout(() => window.location.reload(), 100);
       } else {
         setErrors({ submit: data.message || 'Login failed' });
       }
@@ -393,7 +396,7 @@ const Home = () => {
                 </div>
               </div>
 
-              <div style={{ marginBottom: '1.75rem' }}>
+              <div style={{ marginBottom: '0.5rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#334155' }}>
                   Password
                 </label>
@@ -427,6 +430,13 @@ const Home = () => {
                     {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+              </div>
+
+              {/* ✅ ADDED: Forgot Password Link */}
+              <div style={{ textAlign: 'right', marginBottom: '1.25rem' }}>
+                <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>
+                  Forgot Password?
+                </Link>
               </div>
 
               <button
