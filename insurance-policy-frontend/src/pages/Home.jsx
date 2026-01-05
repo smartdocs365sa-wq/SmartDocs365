@@ -6,8 +6,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Upload, Shield, TrendingUp, CheckCircle, Lock, Mail, 
-  AlertCircle, UserCog, X, Eye, EyeOff, Video, ExternalLink, Calendar 
-} from 'lucide-react'; // ✅ Added Video, ExternalLink, Calendar
+  AlertCircle, UserCog, X, Eye, EyeOff, Video, Calendar 
+} from 'lucide-react'; 
 import logo from '../assets/logo.png';
 import api from '../services/api'; // ✅ Import API to fetch blogs
 import { formatDate } from '../utils/helpers';
@@ -45,9 +45,11 @@ const Home = () => {
   const getImageUrl = (filename) => {
     if (!filename) return null;
     if (filename.startsWith('http')) return filename;
+    // Remove /api from the base URL if present
     const baseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:3033/api').replace('/api', '');
     // Ensure clean path
     const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
+    // Construct final URL
     return `${baseUrl}/uploads${cleanPath.includes('/uploads') ? cleanPath.replace('/uploads', '') : cleanPath}`;
   };
 
@@ -84,7 +86,6 @@ const Home = () => {
     setErrors({});
 
     try {
-      // Use api instance instead of fetch to match your auth structure
       const response = await api.post('/login', {
         email_address: adminForm.email,
         password: adminForm.password
@@ -98,7 +99,7 @@ const Home = () => {
         
         const role = data.user?.role;
         if (role === 'admin' || role === 'super-admin') {
-          navigate('/admin');
+          navigate('/admin'); // Assuming you have an admin route
         } else {
           navigate('/dashboard');
         }
@@ -311,8 +312,6 @@ const Home = () => {
                           <Video size={18} /> Watch Video
                         </a>
                       )}
-                      
-                      {/* You can add a "Read More" logic if you have individual blog pages */}
                     </div>
                   </div>
                 </div>
