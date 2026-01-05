@@ -1,6 +1,7 @@
 // ============================================
 // FILE: src/pages/Home.jsx
-// ✅ FIXED: Blog Section fully connected to Admin Panel
+// ✅ FIXED: Uses 'api' service for correct Base URL
+// ✅ FIXED: Uses 'process.env' instead of 'import.meta.env'
 // ============================================
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,27 +10,20 @@ import {
   AlertCircle, UserCog, X, Eye, EyeOff, Video, Calendar 
 } from 'lucide-react'; 
 import logo from '../assets/logo.png';
-import api from '../services/api'; // ✅ Uses your configured API (Render connection)
-import { authService } from '../services/auth';
+import api from '../services/api'; // ✅ Import API (Connects to Render)
+import { authService } from '../services/auth'; // ✅ Use Auth Service
+import { formatDate } from '../utils/helpers';
 
-// ✅ HELPER: Date Formatter
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric'
-  });
-};
-
-// ✅ COMPONENT: News Section (Live Updates from Admin Panel)
+// ✅ COMPONENT: News Section (Internal)
 const NewsSection = () => {
   const [news, setNews] = useState([]);
   
-  // ✅ FIX: Get correct Image URL from Backend
+  // Helper to get image URL using the correct backend
   const getImageUrl = (filename) => {
     if (!filename) return null;
     if (filename.startsWith('http')) return filename;
     
-    // Get base URL from environment variable (Matches api.js)
+    // Get base URL from environment variable (CRA compatible)
     const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3033/api';
     const rootUrl = apiBase.replace('/api', '');
     
@@ -38,13 +32,12 @@ const NewsSection = () => {
     // Check if path already contains 'uploads'
     return `${rootUrl}${cleanPath.includes('/uploads') ? '' : '/uploads'}${cleanPath}`;
   };
-  
+
   useEffect(() => {
-    // ✅ FIX: Use 'api' instance to fetch from PUBLIC route
-    // This allows blogs to show without logging in
+    // ✅ Use the 'api' instance to fetch public blogs
+    // This automatically uses the correct Render URL from api.js
     api.get('/public/blogs')
       .then(res => {
-        // Handle standard response format
         if (res.data && res.data.success) {
           setNews(res.data.data || []);
         } else if (Array.isArray(res.data)) {
@@ -54,7 +47,6 @@ const NewsSection = () => {
       .catch(err => console.error("Failed to load news:", err));
   }, []);
 
-  // Only render if there are blogs
   if (news.length === 0) return null;
 
   return (
@@ -88,14 +80,13 @@ const NewsSection = () => {
               border: '1px solid #e5e7eb', 
               display: 'flex', 
               flexDirection: 'column',
-              transition: 'transform 0.2s ease-in-out',
-              height: '100%'
+              transition: 'transform 0.2s ease-in-out'
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
             >
               
-              {/* Image Area */}
+              {/* Image */}
               <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
                 {item.imageUrl ? (
                   <img 
@@ -105,22 +96,22 @@ const NewsSection = () => {
                      onError={(e) => e.target.style.display = 'none'}
                   />
                 ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
                     📰
                   </div>
                 )}
               </div>
               
-              {/* Content Area */}
+              {/* Content */}
               <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: '0.75rem', lineHeight: 1.4 }}>
                   {item.title}
                 </h3>
-                <p style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                <p style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', flex: 1 }}>
                   {item.description}
                 </p>
                 
-                {/* Actions & Date */}
+                {/* Actions */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #f3f4f6' }}>
                   <div style={{ fontSize: '0.875rem', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Calendar size={14} />
@@ -356,7 +347,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ✅ ADDED: NEWS SECTION (Connected to Admin Panel) */}
+      {/* ✅ ADDED: NEWS SECTION */}
       <NewsSection />
 
       {/* CTA SECTION */}
@@ -467,6 +458,7 @@ const Home = () => {
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Lock style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', zIndex: 1 }} size={20} />
+                  
                   <input
                     type={showAdminPassword ? "text" : "password"}
                     value={adminForm.password}
@@ -481,6 +473,7 @@ const Home = () => {
                     onFocus={(e) => e.target.style.borderColor = '#1e40af'}
                     onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                   />
+                  
                   <button
                     type="button"
                     onClick={() => setShowAdminPassword(!showAdminPassword)}
@@ -504,9 +497,10 @@ const Home = () => {
                   width: '100%', padding: '1rem',
                   background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)',
                   color: 'white', border: 'none', borderRadius: '0.625rem',
-                  fontWeight: 700, fontSize: '1.0625rem', cursor: loading ? 'not-allowed' : 'pointer',
-                  marginBottom: '1rem', opacity: loading ? 0.7 : 1, transition: 'all 0.3s',
-                  boxShadow: '0 4px 12px rgba(30, 64, 175, 0.3)'
+                  fontWeight: 700, fontSize: '1.0625rem',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '1rem', opacity: loading ? 0.7 : 1,
+                  transition: 'all 0.3s', boxShadow: '0 4px 12px rgba(30, 64, 175, 0.3)'
                 }}
               >
                 {loading ? 'Signing in...' : 'Sign In to Admin Panel'}
