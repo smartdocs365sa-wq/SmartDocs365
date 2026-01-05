@@ -1,5 +1,6 @@
 // ============================================
-// FILE: Backend/app.js (UPDATED WITH CRON)
+// FILE: Backend/app.js
+// ✅ FIXED: Static file serving for Images & PDFs
 // ============================================
 
 require("dotenv").config();
@@ -49,8 +50,11 @@ app.use(cors(corsOptions));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(cookieParser());
+
+// ✅ FIXED: Serve static files correctly
+// This tells the server: "If someone asks for /uploads, look in the uploads folder"
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.static(path.join(__dirname, "/public")));
-app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
 
 // ============================================
 // ROUTES

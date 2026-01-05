@@ -84,7 +84,7 @@ const AdminPanel = () => {
           {activeTab === 'users' && <UsersTab />}
           {activeTab === 'plans' && <PlansTab />}
           {activeTab === 'reports' && <ReportsTab />}
-          {activeTab === 'blogs' && <BlogsTab />} {/* ✅ NEW CONTENT */}
+          {activeTab === 'blogs' && <BlogsTab />} {/* ✅ FIXED THIS TAB */}
           {activeTab === 'admins' && user?.role === 'super-admin' && <AdminsTab />}
         </div>
       </div>
@@ -787,7 +787,7 @@ const ReportsTab = () => {
   );
 };
 
-// ========== BLOGS TAB (NEW) ==========
+// ========== BLOGS TAB (FIXED) ==========
 const BlogsTab = () => {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -801,6 +801,17 @@ const BlogsTab = () => {
   const [videoUrl, setVideoUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
+
+  // ✅ FIX: Use consistent URL generation helper
+  // This ensures images load from Render (backend) instead of breaking on Vercel
+  const getImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3033/api';
+    const rootUrl = apiBase.replace('/api', '');
+    const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+    return `${rootUrl}${cleanPath}`;
+  };
 
   useEffect(() => {
     fetchBlogs();
@@ -837,8 +848,8 @@ const BlogsTab = () => {
     setTitle(blog.title);
     setDescription(blog.description);
     setVideoUrl(blog.videoUrl || '');
-    // If there's an existing image, user can see it in list, but here we prepare for new upload
-    setPreviewUrl(blog.imageUrl ? `${import.meta.env.VITE_API_URL || 'http://localhost:3033'}/${blog.imageUrl}` : ''); 
+    // ✅ FIX: Use getImageUrl for preview
+    setPreviewUrl(getImageUrl(blog.imageUrl)); 
     setShowModal(true);
   };
 
@@ -885,7 +896,6 @@ const BlogsTab = () => {
   };
 
   const handleDelete = async (id) => {
-    // ✅ FIX: Use window.confirm instead of just confirm
     if (!window.confirm('Delete this post?')) return;
     try {
       const res = await adminService.deleteBlog(id);
@@ -894,8 +904,6 @@ const BlogsTab = () => {
       alert('Delete failed');
     }
   };
-
-  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3033';
 
   return (
     <div>
@@ -912,8 +920,9 @@ const BlogsTab = () => {
             <div key={blog.blog_id} className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               {blog.imageUrl && (
                 <div style={{ height: '160px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}>
+                  {/* ✅ FIX: Use correct image URL */}
                   <img 
-                    src={`${baseURL}/${blog.imageUrl.replace(/\\/g, '/')}`} 
+                    src={getImageUrl(blog.imageUrl)} 
                     alt={blog.title} 
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => e.target.style.display = 'none'}

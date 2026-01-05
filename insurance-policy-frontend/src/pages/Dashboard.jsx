@@ -17,7 +17,7 @@ import {
   FileSpreadsheet,
   Zap,
   Shield,
-  Video // ✅ ADDED THIS IMPORT
+  Video
 } from 'lucide-react';
 import api from '../services/api'; 
 import Loader from '../components/common/Loader';
@@ -64,26 +64,18 @@ const Dashboard = () => {
     }
   };
 
-  // ✅ HELPER: Parse DD/MM/YYYY correctly
   const parsePolicyDate = (dateString) => {
     if (!dateString) return null;
     const cleanDate = dateString.trim();
-    
-    // Check if it matches DD/MM/YYYY or DD-MM-YYYY
     const parts = cleanDate.split(/[\/\-]/);
     if (parts.length === 3) {
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
         const year = parseInt(parts[2], 10);
-        
-        // Basic validation
         if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-            // JS Date uses 0-indexed months (0=Jan, 11=Dec)
             return new Date(year, month - 1, day);
         }
     }
-    
-    // Fallback for standard ISO dates (YYYY-MM-DD)
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? null : date;
   };
@@ -91,21 +83,14 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setRefreshing(true);
-      
-      // 1. Fetch Plan Limits
       const statsResponse = await api.get('/user/dashboard-stats');
       const backendStats = statsResponse.data.success ? statsResponse.data.data : {};
-      
-      // 2. Fetch Actual Policy List (for Real-Time Logic)
       const policiesResponse = await api.get('/pdf/list');
       
       if (policiesResponse.data.success) {
         const allPolicies = policiesResponse.data.data || [];
-
-        // --- PLAN USAGE CALCULATION ---
         const pdfPolicies = allPolicies.filter(p => !p.export_data && !p.is_manual);
         const excelPolicies = allPolicies.filter(p => p.export_data || p.is_manual);
-        
         const usedCount = pdfPolicies.length;
         const limit = backendStats.uploadsLimit || 0; 
         const percentage = limit > 0 ? Math.min((usedCount / limit) * 100, 100) : 0;
@@ -119,11 +104,8 @@ const Dashboard = () => {
           expiryDate: backendStats.expiryDate
         });
 
-        // --- DASHBOARD STATUS COUNTS (FIXED LOGIC) ---
         const now = new Date();
-        // Reset time to start of day for accurate comparison
         now.setHours(0, 0, 0, 0);
-
         const thirtyDaysFromNow = new Date(now);
         thirtyDaysFromNow.setDate(now.getDate() + 30);
 
@@ -134,22 +116,17 @@ const Dashboard = () => {
         allPolicies.forEach(p => {
             const expiryStr = p.file_details?.Policy_expiry_date;
             const expiryDate = parsePolicyDate(expiryStr);
-
             if (expiryDate) {
-                // Reset time for accurate date-only comparison
                 expiryDate.setHours(0, 0, 0, 0);
-
                 if (expiryDate < now) {
                     expiredCount++;
                 } else {
                     activeCount++;
-                    // Check if expiring within 30 days
                     if (expiryDate <= thirtyDaysFromNow) {
                         expiringSoonCount++;
                     }
                 }
             } else {
-                // If no valid date, count as expired or ignore? 
                 expiredCount++; 
             }
         });
@@ -161,7 +138,6 @@ const Dashboard = () => {
           expired: expiredCount
         });
 
-        // --- RECENT POLICIES ---
         const sortedPolicies = [...allPolicies].sort((a, b) => 
           new Date(b.created_at) - new Date(a.created_at)
         ).slice(0, 5);
@@ -467,6 +443,21 @@ const QuickActionCard = ({ onClick, icon, iconBg, title, subtitle, hoverColor })
 const NewsSection = () => {
   const [news, setNews] = useState([]);
   
+  // ✅ FIX: Use a consistent Base URL helper
+  const getImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    
+    // Use the exact same logic as api.js to avoid "localhost" issues
+    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3033/api';
+    // Remove the trailing '/api' to get the root URL (e.g., https://backend.com)
+    const rootUrl = apiBase.replace('/api', '');
+    
+    // Ensure the image path starts with '/'
+    const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+    return `${rootUrl}${cleanPath}`;
+  };
+  
   useEffect(() => {
     // Fetch blogs using the public list endpoint
     api.get('/admin/blogs/list')
@@ -477,8 +468,6 @@ const NewsSection = () => {
   }, []);
 
   if (news.length === 0) return null;
-
-  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3033';
 
   return (
     <div style={{ marginTop: '3rem' }}>
@@ -493,7 +482,7 @@ const NewsSection = () => {
             {item.imageUrl && (
               <div style={{ height: '180px', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
                 <img 
-                   src={`${baseURL}/${item.imageUrl.replace(/\\/g, '/')}`} 
+                   src={getImageUrl(item.imageUrl)} 
                    alt={item.title}
                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                    onError={(e) => e.target.style.display = 'none'}
