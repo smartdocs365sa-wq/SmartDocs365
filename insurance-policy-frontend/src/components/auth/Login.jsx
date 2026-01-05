@@ -1,5 +1,6 @@
 // ============================================
-// FILE: Login.jsx - FINAL FIX (Works with fixed api.js)
+// FILE: src/components/auth/Login.jsx
+// ✅ FIXED: Added Simple Footer (Copyright only)
 // ============================================
 
 import { useState } from 'react';
@@ -42,41 +43,23 @@ const Login = () => {
     setLoading(true);
 
     try {
-      console.log('🔐 [Login] Attempting login for:', formData.email_address);
-      
       const response = await login(formData.email_address, formData.password);
       
-      console.log('📡 [Login] Response:', response);
-
       if (response && response.success) {
-        console.log('✅ [Login] Success! Navigating to dashboard...');
         setTimeout(() => {
           navigate('/dashboard');
         }, 100);
       } else {
-        const errorMsg = response?.message || 'Invalid email or password!';
-        console.log('❌ [Login] Failed:', errorMsg);
-        setError(errorMsg);
+        setError(response?.message || 'Invalid email or password!');
         setLoading(false);
       }
     } catch (err) {
-      console.error('❌ [Login] Error caught:', err);
-      
       let errorMsg = 'Invalid email or password!';
-      
       if (err.response) {
-        if (err.response.status === 401) {
-          errorMsg = 'Invalid email or password!';
-        } else if (err.response.status === 403) {
-          errorMsg = err.response.data?.message || 'Account is blocked';
-        } else {
-          errorMsg = err.response.data?.message || errorMsg;
-        }
+        errorMsg = err.response.data?.message || errorMsg;
       } else if (err.request) {
         errorMsg = 'Cannot connect to server. Please check your connection.';
       }
-      
-      console.log('❌ [Login] Error message:', errorMsg);
       setError(errorMsg);
       setLoading(false);
     }
@@ -127,7 +110,8 @@ const Login = () => {
         borderRadius: '1rem',
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
         maxWidth: '450px',
-        width: '100%'
+        width: '100%',
+        zIndex: 10
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '0.5rem' }}>
@@ -161,25 +145,13 @@ const Login = () => {
         <div onKeyPress={handleKeyPress}>
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ 
-              display: 'block', 
-              marginBottom: '0.5rem',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              color: '#374151',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
+              display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem',
+              fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em'
             }}>
               EMAIL ADDRESS
             </label>
             <div style={{ position: 'relative' }}>
-              <Mail style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#9ca3af',
-                zIndex: 1
-              }} size={20} />
+              <Mail style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', zIndex: 1 }} size={20} />
               <input
                 type="email"
                 name="email_address"
@@ -187,14 +159,8 @@ const Login = () => {
                 onChange={handleChange}
                 placeholder="Enter your email"
                 style={{ 
-                  paddingLeft: '2.5rem',
-                  borderColor: error ? '#fca5a5' : '#d1d5db',
-                  borderWidth: '2px',
-                  width: '100%',
-                  padding: '0.875rem 1rem 0.875rem 2.5rem',
-                  borderRadius: '0.5rem',
-                  fontSize: '1rem',
-                  transition: 'all 0.2s',
+                  paddingLeft: '2.5rem', width: '100%', padding: '0.875rem 1rem 0.875rem 2.5rem',
+                  borderRadius: '0.5rem', fontSize: '1rem', transition: 'all 0.2s',
                   border: `2px solid ${error ? '#fca5a5' : '#d1d5db'}`
                 }}
                 disabled={loading}
@@ -205,26 +171,13 @@ const Login = () => {
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ 
-              display: 'block', 
-              marginBottom: '0.5rem',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              color: '#374151',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
+              display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem',
+              fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em'
             }}>
               PASSWORD
             </label>
             <div style={{ position: 'relative' }}>
-              <Lock style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#9ca3af',
-                zIndex: 1
-              }} size={20} />
-              
+              <Lock style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', zIndex: 1 }} size={20} />
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
@@ -232,43 +185,23 @@ const Login = () => {
                 onChange={handleChange}
                 placeholder="Enter your password"
                 style={{ 
-                  paddingLeft: '2.5rem',
-                  paddingRight: '3rem',
-                  borderColor: error ? '#fca5a5' : '#d1d5db',
-                  borderWidth: '2px',
-                  width: '100%',
-                  padding: '0.875rem 3rem 0.875rem 2.5rem',
-                  borderRadius: '0.5rem',
-                  fontSize: '1rem',
-                  transition: 'all 0.2s',
+                  paddingLeft: '2.5rem', paddingRight: '3rem', width: '100%',
+                  padding: '0.875rem 3rem 0.875rem 2.5rem', borderRadius: '0.5rem',
+                  fontSize: '1rem', transition: 'all 0.2s',
                   border: `2px solid ${error ? '#fca5a5' : '#d1d5db'}`
                 }}
                 disabled={loading}
                 autoComplete="current-password"
               />
-              
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={loading}
                 style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0.25rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#9ca3af',
-                  transition: 'color 0.2s',
-                  zIndex: 1
+                  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem',
+                  color: '#9ca3af', zIndex: 1
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#667eea'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -276,12 +209,7 @@ const Login = () => {
           </div>
 
           <div style={{ textAlign: 'right', marginBottom: '1.5rem' }}>
-            <Link to="/forgot-password" style={{
-              color: '#667eea',
-              fontSize: '0.875rem',
-              textDecoration: 'none',
-              fontWeight: 500
-            }}>
+            <Link to="/forgot-password" style={{ color: '#667eea', fontSize: '0.875rem', textDecoration: 'none', fontWeight: 500 }}>
               Forgot password?
             </Link>
           </div>
@@ -290,59 +218,38 @@ const Login = () => {
             type="button"
             onClick={handleLoginClick}
             style={{ 
-              width: '100%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              gap: '0.5rem',
-              padding: '1rem',
-              fontSize: '1rem',
-              fontWeight: 600,
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              gap: '0.5rem', padding: '1rem', fontSize: '1rem', fontWeight: 600,
               background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '0.625rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease'
+              color: '#fff', border: 'none', borderRadius: '0.625rem', cursor: loading ? 'not-allowed' : 'pointer'
             }}
             disabled={loading}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 12px 24px rgba(102, 126, 234, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
           >
-            {loading ? (
-              <>
-                <Loader size="sm" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                <LogIn size={20} />
-                Sign In
-              </>
-            )}
+            {loading ? <><Loader size="sm" /> Signing in...</> : <><LogIn size={20} /> Sign In</>}
           </button>
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
           <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
             Don't have an account?{' '}
-            <Link to="/register" style={{
-              color: '#667eea',
-              fontWeight: 600,
-              textDecoration: 'none'
-            }}>
+            <Link to="/register" style={{ color: '#667eea', fontWeight: 600, textDecoration: 'none' }}>
               Register now
             </Link>
           </p>
         </div>
+      </div>
+
+      {/* ✅ SIMPLE FOOTER ADDED */}
+      <div style={{
+        position: 'absolute',
+        bottom: '1rem',
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: 'rgba(255, 255, 255, 0.6)',
+        fontSize: '0.875rem'
+      }}>
+        &copy; {new Date().getFullYear()} SmartDocs365. All rights reserved.
       </div>
 
       <style>{`
@@ -350,12 +257,6 @@ const Login = () => {
           0%, 100% { transform: translateX(0); }
           10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
           20%, 40%, 60%, 80% { transform: translateX(8px); }
-        }
-        
-        input:focus {
-          outline: none;
-          border-color: #667eea !important;
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
         }
       `}</style>
     </div>

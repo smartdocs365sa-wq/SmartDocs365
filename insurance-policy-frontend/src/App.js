@@ -1,6 +1,6 @@
 // ============================================
 // FILE: insurance-policy-frontend/src/App.js
-// ✅ FIXED: Hides global footer on Home Page
+// ✅ FIXED: Hides global footer on Home, Login, Register & Forgot Password
 // ============================================
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
@@ -13,6 +13,7 @@ import Loader from './components/common/Loader';
 import Home from './pages/Home';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import ForgotPassword from './components/auth/ForgotPassword'; // ✅ Import ForgotPassword
 import Dashboard from './pages/Dashboard';
 import Policies from './pages/Policies';
 import AdminPanel from './pages/AdminPanel';
@@ -44,12 +45,14 @@ const AdminRoute = ({ children }) => {
 const Layout = ({ children }) => {
   const location = useLocation();
   
-  // Don't show Navbar on Home, Login, or Register
-  const hideNavbarRoutes = ['/', '/login', '/register'];
+  // Don't show Navbar on public auth pages
+  const hideNavbarRoutes = ['/', '/login', '/register', '/forgot-password'];
   const showNavbar = !hideNavbarRoutes.includes(location.pathname);
 
-  // ✅ NEW: Hide Global Footer on Home Page (We will use a simple one inside Home.jsx)
-  const hideGlobalFooter = location.pathname === '/';
+  // ✅ FIXED: Hide Global Footer on these specific pages 
+  // (Because they now have their own simple footers)
+  const hideGlobalFooterRoutes = ['/', '/login', '/register', '/forgot-password'];
+  const hideGlobalFooter = hideGlobalFooterRoutes.includes(location.pathname);
 
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -59,7 +62,7 @@ const Layout = ({ children }) => {
         {children}
       </main>
 
-      {/* Footer shows on all pages EXCEPT Home */}
+      {/* Footer shows on all pages EXCEPT the ones listed above */}
       {!hideGlobalFooter && <Footer />}
     </div>
   );
@@ -75,6 +78,8 @@ const App = () => {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} /> {/* ✅ Add Route */}
+            
             <Route path="/contact" element={<ContactUs />} />
             <Route path="/help" element={<HelpCenter />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
