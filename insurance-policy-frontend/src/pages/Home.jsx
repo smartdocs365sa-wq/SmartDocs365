@@ -1,55 +1,140 @@
-// ============================================
-// FILE: src/pages/Home.jsx
-// ✅ FIXED: Added Public "Latest News" Section
-// ============================================
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Upload, Shield, TrendingUp, CheckCircle, Lock, Mail, 
-  AlertCircle, UserCog, X, Eye, EyeOff, Video, ExternalLink, Calendar 
-} from 'lucide-react'; // ✅ Added Video, ExternalLink, Calendar
+  AlertCircle, UserCog, X, Eye, EyeOff, Video 
+} from 'lucide-react';
+import axios from 'axios'; // Make sure to install axios: npm install axios
 import logo from '../assets/logo.png';
-import api from '../services/api'; // ✅ Import API to fetch blogs
-import { formatDate } from '../utils/helpers';
+import { authService } from '../services/auth';
 
+// ✅ HELPER: Date Formatter
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  });
+};
+
+// ✅ COMPONENT: News Section (Internal)
+const NewsSection = () => {
+  const [news, setNews] = useState([]);
+  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3033';
+  
+  useEffect(() => {
+    // Fetch blogs using the public list endpoint
+    // Assuming the endpoint is /api/admin/blogs/list based on your other API structures
+    axios.get(`${baseURL}/api/admin/blogs/list`) 
+      .then(res => {
+        // Handle both axios data structure and your API response structure
+        const data = res.data; 
+        if (data.success) {
+            setNews(data.data || []);
+        }
+      })
+      .catch(err => console.error("Failed to load news", err));
+  }, [baseURL]);
+
+  if (news.length === 0) return null;
+
+  return (
+    <div style={{ 
+      padding: '5rem 3rem', 
+      background: '#ffffff',
+      borderTop: '1px solid #f3f4f6'
+    }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <h2 style={{ 
+          fontSize: '2.5rem', 
+          fontWeight: 800, 
+          marginBottom: '2.5rem', 
+          color: '#111827',
+          textAlign: 'center'
+        }}>
+          Latest Updates & News
+        </h2>
+        
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
+          gap: '2rem' 
+        }}>
+          {news.map(item => (
+            <div key={item.blog_id} style={{ 
+              backgroundColor: 'white', 
+              borderRadius: '16px', 
+              overflow: 'hidden', 
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', 
+              border: '1px solid #e5e7eb', 
+              display: 'flex', 
+              flexDirection: 'column',
+              transition: 'transform 0.2s ease-in-out',
+              cursor: 'default'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              
+              {/* Image */}
+              {item.imageUrl && (
+                <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
+                  <img 
+                     src={`${baseURL}/${item.imageUrl.replace(/\\/g, '/')}`} 
+                     alt={item.title}
+                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                     onError={(e) => e.target.style.display = 'none'}
+                  />
+                </div>
+              )}
+              
+              {/* Content */}
+              <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                  {item.title}
+                </h3>
+                <p style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', flex: 1 }}>
+                  {item.description}
+                </p>
+                
+                {/* Actions */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #f3f4f6' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                    {formatDate(item.createdAt)}
+                  </div>
+
+                  {item.videoUrl && (
+                    <a 
+                      href={item.videoUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ 
+                        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                        color: '#ef4444', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none',
+                        padding: '0.5rem 1rem', borderRadius: '9999px', backgroundColor: '#fef2f2'
+                      }}
+                    >
+                      <Video size={16} />
+                      Watch Video
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ✅ MAIN PAGE COMPONENT
 const Home = () => {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminForm, setAdminForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  
-  // ✅ NEW STATE FOR BLOGS
-  const [blogs, setBlogs] = useState([]);
   const navigate = useNavigate();
-
-  // ✅ FETCH BLOGS ON LOAD
-  useEffect(() => {
-    const fetchPublicBlogs = async () => {
-      try {
-        const response = await api.get('/admin/blogs/list');
-        if (response.data && (response.data.success || Array.isArray(response.data))) {
-          // Handle both { success: true, data: [...] } and raw array [...]
-          const blogList = response.data.data || response.data;
-          // Sort by newest first and take top 3
-          setBlogs(Array.isArray(blogList) ? blogList.slice(0, 3) : []);
-        }
-      } catch (error) {
-        console.error("Could not fetch public blogs:", error);
-      }
-    };
-    fetchPublicBlogs();
-  }, []);
-
-  // ✅ IMAGE URL HELPER
-  const getImageUrl = (filename) => {
-    if (!filename) return null;
-    if (filename.startsWith('http')) return filename;
-    const baseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:3033/api').replace('/api', '');
-    // Ensure clean path
-    const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
-    return `${baseUrl}/uploads${cleanPath.includes('/uploads') ? cleanPath.replace('/uploads', '') : cleanPath}`;
-  };
 
   const features = [
     {
@@ -84,13 +169,7 @@ const Home = () => {
     setErrors({});
 
     try {
-      // Use api instance instead of fetch to match your auth structure
-      const response = await api.post('/login', {
-        email_address: adminForm.email,
-        password: adminForm.password
-      });
-
-      const data = response.data;
+      const data = await authService.login(adminForm.email, adminForm.password);
 
       if (data.success) {
         localStorage.setItem('token', data.token);
@@ -102,7 +181,7 @@ const Home = () => {
         } else {
           navigate('/dashboard');
         }
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 100);
       } else {
         setErrors({ submit: data.message || 'Login failed' });
       }
@@ -116,7 +195,7 @@ const Home = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh' }}>
       {/* HEADER */}
       <header style={{
         background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)',
@@ -131,7 +210,11 @@ const Home = () => {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem'
+          }}>
             <img 
               src={logo} 
               alt="SmartDocs365" 
@@ -164,6 +247,16 @@ const Home = () => {
               gap: '0.5rem',
               transition: 'all 0.3s',
               backdropFilter: 'blur(10px)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
           >
             <UserCog size={20} />
@@ -208,142 +301,6 @@ const Home = () => {
               Sign In
             </Link>
           </div>
-        </div>
-      </div>
-
-      {/* FEATURES SECTION */}
-      <div style={{ padding: '5rem 3rem', background: '#f8fafc' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2.75rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', color: '#111827' }}>
-            Why Choose SmartDocs365?
-          </h2>
-          <p style={{ fontSize: '1.25rem', color: '#6b7280', textAlign: 'center', marginBottom: '4rem', maxWidth: '700px', margin: '0 auto 4rem' }}>
-            Powerful features to simplify your insurance management
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-            {features.map((feature, index) => {
-              const IconComponent = feature.icon;
-              return (
-                <div key={index} style={{
-                  background: 'white', padding: '2.5rem', borderRadius: '1.25rem',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center',
-                  transition: 'all 0.3s', border: '1px solid #f3f4f6'
-                }}>
-                  <div style={{
-                    width: '72px', height: '72px', background: `${feature.color}15`,
-                    borderRadius: '1rem', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', margin: '0 auto 1.5rem'
-                  }}>
-                    <IconComponent size={36} color={feature.color} strokeWidth={2} />
-                  </div>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.875rem', color: '#111827' }}>
-                    {feature.title}
-                  </h3>
-                  <p style={{ color: '#6b7280', lineHeight: 1.7, fontSize: '1rem' }}>
-                    {feature.description}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* ✅ NEW: LATEST NEWS SECTION */}
-      {blogs.length > 0 && (
-        <div style={{ padding: '5rem 3rem', background: 'white' }}>
-          <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', color: '#111827' }}>
-              Latest Updates
-            </h2>
-            <p style={{ fontSize: '1.2rem', color: '#6b7280', textAlign: 'center', marginBottom: '3.5rem' }}>
-              Stay informed with our latest news and features
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem' }}>
-              {blogs.map((blog) => (
-                <div key={blog.blog_id || blog._id} style={{
-                  borderRadius: '1.25rem', overflow: 'hidden',
-                  boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)',
-                  background: '#fff', border: '1px solid #f3f4f6',
-                  display: 'flex', flexDirection: 'column', height: '100%'
-                }}>
-                  {/* Image Area */}
-                  <div style={{ height: '220px', background: '#f8fafc', overflow: 'hidden', position: 'relative' }}>
-                    {blog.imageUrl ? (
-                      <img 
-                        src={getImageUrl(blog.imageUrl)} 
-                        alt={blog.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%)' }}>
-                        <span style={{ fontSize: '3rem' }}>📰</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content Area */}
-                  <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
-                      <Calendar size={14} />
-                      {formatDate(blog.createdAt)}
-                    </div>
-                    
-                    <h3 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#1e293b', marginBottom: '1rem', lineHeight: 1.4 }}>
-                      {blog.title}
-                    </h3>
-                    
-                    <p style={{ fontSize: '1rem', color: '#64748b', lineHeight: 1.6, flex: 1, marginBottom: '1.5rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {blog.description}
-                    </p>
-
-                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      {blog.videoUrl && (
-                        <a 
-                          href={blog.videoUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', fontWeight: 600, textDecoration: 'none', fontSize: '0.95rem' }}
-                        >
-                          <Video size={18} /> Watch Video
-                        </a>
-                      )}
-                      
-                      {/* You can add a "Read More" logic if you have individual blog pages */}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CTA SECTION */}
-      <div style={{
-        padding: '5rem 3rem',
-        background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)',
-        textAlign: 'center',
-        color: 'white'
-      }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2.75rem', fontWeight: 800, marginBottom: '1.5rem', textShadow: '0 2px 20px rgba(0,0,0,0.2)' }}>
-            Ready to Get Started?
-          </h2>
-          <p style={{ fontSize: '1.375rem', marginBottom: '2.5rem', opacity: 0.95, lineHeight: 1.6 }}>
-            Join thousands of users managing their insurance policies efficiently
-          </p>
-          <Link to="/register" style={{
-            display: 'inline-block', padding: '1.125rem 3rem', background: 'white',
-            color: '#1e40af', textDecoration: 'none', borderRadius: '0.75rem',
-            fontWeight: 700, fontSize: '1.1875rem', boxShadow: '0 6px 24px rgba(0,0,0,0.2)',
-            transition: 'all 0.3s'
-          }}>
-            Create Free Account
-          </Link>
         </div>
       </div>
 
@@ -430,7 +387,6 @@ const Home = () => {
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Lock style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', zIndex: 1 }} size={20} />
-                  
                   <input
                     type={showAdminPassword ? "text" : "password"}
                     value={adminForm.password}
@@ -445,7 +401,6 @@ const Home = () => {
                     onFocus={(e) => e.target.style.borderColor = '#1e40af'}
                     onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                   />
-                  
                   <button
                     type="button"
                     onClick={() => setShowAdminPassword(!showAdminPassword)}
@@ -469,10 +424,9 @@ const Home = () => {
                   width: '100%', padding: '1rem',
                   background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)',
                   color: 'white', border: 'none', borderRadius: '0.625rem',
-                  fontWeight: 700, fontSize: '1.0625rem',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  marginBottom: '1rem', opacity: loading ? 0.7 : 1,
-                  transition: 'all 0.3s', boxShadow: '0 4px 12px rgba(30, 64, 175, 0.3)'
+                  fontWeight: 700, fontSize: '1.0625rem', cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '1rem', opacity: loading ? 0.7 : 1, transition: 'all 0.3s',
+                  boxShadow: '0 4px 12px rgba(30, 64, 175, 0.3)'
                 }}
               >
                 {loading ? 'Signing in...' : 'Sign In to Admin Panel'}
@@ -487,6 +441,73 @@ const Home = () => {
           </div>
         </div>
       )}
+
+      {/* FEATURES SECTION */}
+      <div style={{ padding: '5rem 3rem', background: '#f8fafc' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '2.75rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', color: '#111827' }}>
+            Why Choose SmartDocs365?
+          </h2>
+          <p style={{ fontSize: '1.25rem', color: '#6b7280', textAlign: 'center', marginBottom: '4rem', maxWidth: '700px', margin: '0 auto 4rem' }}>
+            Powerful features to simplify your insurance management
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+            {features.map((feature, index) => {
+              const IconComponent = feature.icon;
+              return (
+                <div key={index} style={{
+                  background: 'white', padding: '2.5rem', borderRadius: '1.25rem',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center',
+                  transition: 'all 0.3s', border: '1px solid #f3f4f6'
+                }}>
+                  <div style={{
+                    width: '72px', height: '72px', background: `${feature.color}15`,
+                    borderRadius: '1rem', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', margin: '0 auto 1.5rem'
+                  }}>
+                    <IconComponent size={36} color={feature.color} strokeWidth={2} />
+                  </div>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.875rem', color: '#111827' }}>
+                    {feature.title}
+                  </h3>
+                  <p style={{ color: '#6b7280', lineHeight: 1.7, fontSize: '1rem' }}>
+                    {feature.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ✅ ADDED: NEWS SECTION (Only appears if there are news items) */}
+      <NewsSection />
+
+      {/* CTA SECTION */}
+      <div style={{
+        padding: '5rem 3rem',
+        background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)',
+        textAlign: 'center',
+        color: 'white'
+      }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '2.75rem', fontWeight: 800, marginBottom: '1.5rem', textShadow: '0 2px 20px rgba(0,0,0,0.2)' }}>
+            Ready to Get Started?
+          </h2>
+          <p style={{ fontSize: '1.375rem', marginBottom: '2.5rem', opacity: 0.95, lineHeight: 1.6 }}>
+            Join thousands of users managing their insurance policies efficiently
+          </p>
+          <Link to="/register" style={{
+            display: 'inline-block', padding: '1.125rem 3rem', background: 'white',
+            color: '#1e40af', textDecoration: 'none', borderRadius: '0.75rem',
+            fontWeight: 700, fontSize: '1.1875rem', boxShadow: '0 6px 24px rgba(0,0,0,0.2)',
+            transition: 'all 0.3s'
+          }}>
+            Create Free Account
+          </Link>
+        </div>
+      </div>
     </div>
   );
 };
