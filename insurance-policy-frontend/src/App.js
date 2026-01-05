@@ -1,94 +1,99 @@
 // ============================================
-// FILE: Backend/app.js
-// ✅ FIXED: Added PUBLIC Blog Route (Line 45-56)
+// FILE: insurance-policy-frontend/src/App.js
+// ✅ FIXED: Added Footer to show on all pages
 // ============================================
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Navbar from './components/common/Navbar';
+import Footer from './components/common/Footer'; // ✅ 1. IMPORT FOOTER
+import Loader from './components/common/Loader';
 
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const cookieParser = require("cookie-parser");
-const path = require("path");
-const cron = require("node-cron");
-const fs = require("fs");
-const importExcelDataRoute = require('./routes/apis/importExcelData');
+// Pages
+import Home from './pages/Home';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import Dashboard from './pages/Dashboard';
+import Policies from './pages/Policies';
+import AdminPanel from './pages/AdminPanel';
+import Subscription from './pages/Subscription';
+import Profile from './pages/Profile';
+import NotFound from './pages/NotFound';
 
-// ✅ IMPORT BLOG MODEL (Required for public access)
-const Blog = require('./models/blogModel'); 
-
-// importing middlewares
-const allowedOrigins = require("./config/allowedOrigins");
-const credentials = require("./middleware/credentials");
-const errorHandler = require("./errorHandler");
-const verifyJWT = require('./middleware/verifyJWT');
-
-// ✅ Import subscription cron
-const { checkExpiringSubscriptions } = require("./subscriptionCron");
-
-// app setup
-const app = express();
-const PORT = process.env.PORT || 3033;
-
-// Configure CORS options
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log("Blocked by CORS:", origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  optionsSuccessStatus: 200,
-  credentials: true
+// Protected Route Wrapper
+const PrivateRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <Loader />;
+  return user ? children : <Navigate to="/login" />;
 };
 
-app.use(credentials);
-app.use(cors(corsOptions));
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "/public")));
-// Serve uploads folder publicly
-app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
+// Admin Route Wrapper
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <Loader />;
+  return user && (user.role === 'admin' || user.role === 'super-admin') 
+    ? children 
+    : <Navigate to="/dashboard" />;
+};
 
-// ============================================
-// ✅ NEW PUBLIC ROUTE: Get All Blogs (No Login Required)
-// ============================================
-app.get('/api/public/blogs', async (req, res) => {
-  try {
-    // Fetch ALL blogs, sorted by newest first
-    const blogs = await Blog.find({}).sort({ created_at: -1 });
-    res.json({ success: true, data: blogs });
-  } catch (error) {
-    console.error("Public Blog Fetch Error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch blogs" });
-  }
-});
+// Layout Component (Hides Navbar on Public Pages)
+const Layout = ({ children }) => {
+  const location = useLocation();
+  // Don't show Navbar on Home, Login, or Register pages
+  const hideNavbarRoutes = ['/', '/login', '/register'];
+  const showNavbar = !hideNavbarRoutes.includes(location.pathname);
 
-// ============================================
-// ROUTES
-// ============================================
+  return (
+    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {showNavbar && <Navbar />}
+      
+      <main className={showNavbar ? 'main-content' : ''} style={{ flex: 1 }}>
+        {children}
+      </main>
 
-app.use("/api", require("./routes/handler"));
-app.use('/import-excel-data', importExcelDataRoute);
+      {/* ✅ 2. RENDER FOOTER HERE */}
+      <Footer />
+    </div>
+  );
+};
 
-// handling error pages
-app.use(errorHandler);
+const App = () => {
+  return (
+    <Router>
+      <AuthProvider>
+        <Layout>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Protected Routes */}
+            <Route path="/dashboard" element={
+              <PrivateRoute><Dashboard /></PrivateRoute>
+            } />
+            <Route path="/policies" element={
+              <PrivateRoute><Policies /></PrivateRoute>
+            } />
+            <Route path="/subscription" element={
+              <PrivateRoute><Subscription /></PrivateRoute>
+            } />
+            <Route path="/profile" element={
+              <PrivateRoute><Profile /></PrivateRoute>
+            } />
 
-// Database connection
-require("./middleware/db");
+            {/* Admin Routes */}
+            <Route path="/admin" element={
+              <AdminRoute><AdminPanel /></AdminRoute>
+            } />
+            
+            {/* 404 Page */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
+      </AuthProvider>
+    </Router>
+  );
+};
 
-// ✅ START SUBSCRIPTION CRON JOB
-cron.schedule("0 9 * * *", () => {
-  console.log("🔔 Running daily subscription expiry check at 9 AM...");
-  checkExpiringSubscriptions();
-});
-
-console.log("🚀 Running initial subscription check...");
-checkExpiringSubscriptions();
-
-app.listen(PORT, () => {
-  console.log("✅ App is listening on port", PORT);
-  console.log("✅ Public Blog Route is Active at /api/public/blogs");
-});
+export default App;
