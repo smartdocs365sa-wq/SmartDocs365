@@ -1,3 +1,7 @@
+// ============================================
+// FILE: Backend/routes/apis/register.js
+// ============================================
+
 const express = require("express");
 const router = express.Router();
 const registerController = require("../../controllers/registerController.js");
@@ -9,82 +13,31 @@ const userSubcriptionInfoModel = require("../../models/userSubcriptionInfoModel"
 const rechargeInfoModel = require("../../models/rechargeInfoModel");
 
 // ============================================
-// PUBLIC ROUTES (No authentication required)
+// PUBLIC ROUTES
 // ============================================
-
-// OTP verification (public)
 router.get("/otp-verification/:email", registerController.sendOtp);
-
-// User registration (public)
 router.post("/register", registerController.create);
 
 // ============================================
-// PROTECTED ROUTES (Authentication required)
+// PROTECTED ROUTES
 // ============================================
 router.use(verifyJWT);
 
-// Admin registration (super-admin only)
 router.post('/register/admin', registerController.createAdmin);
-
-// Delete admin (super-admin only)
 router.post('/delete-admin', registerController.deleteAdmin);
-
-// Block/unblock user (admin/super-admin)
 router.put("/block", registerController.blockUser);
-
-// Get user list (admin/super-admin)
 router.get("/list", registerController.userList);
-
-// Get admin list (super-admin only)
 router.get("/admin/list", registerController.adminList);
-
-// Get user profile (authenticated users)
 router.get("/profile", registerController.getUserDetail); 
-
-// Get user subscription info
 router.get('/get-user-subcription-info/:userId', registerController.getUserSubcription);
-
-// Update user profile
 router.put("/profile-update/:uuid", registerController.updateProfile);
 
-// ============================================
-// ✅ NEW USER MANAGEMENT ROUTES
-// ============================================
-
-// DELETE USER (admin/super-admin)
+// DELETE USER
 router.post("/delete", async (req, res) => {
   try {
-    if (req.role !== "admin" && req.role !== "super-admin") {
-      return res.status(403).json({
-        success: false,
-        message: "You do not have permission to delete users!"
-      });
-    }
-
+    if (req.role !== "admin" && req.role !== "super-admin") return res.status(403).json({ success: false, message: "Permission Denied" });
     const { user_id } = req.body;
-
-    if (!user_id) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required!"
-      });
-    }
-
-    const user = await userModel.findOne({ user_id });
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found!"
-      });
-    }
-
-    if (user_id === req.user_id) {
-      return res.status(400).json({
-        success: false,
-        message: "You cannot delete your own account!"
-      });
-    }
+    if (!user_id) return res.status(400).json({ success: false, message: "User ID required" });
 
     await Promise.all([
       pdfDetailsModel.deleteMany({ user_id }),
@@ -94,126 +47,35 @@ router.post("/delete", async (req, res) => {
       userModel.deleteOne({ user_id })
     ]);
 
-    res.status(200).json({
-      success: true,
-      message: "User and all associated data deleted successfully!"
-    });
-
+    res.status(200).json({ success: true, message: "User Deleted" });
   } catch (error) {
-    console.error("Error deleting user:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete user: " + error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// MAKE USER AS ADMIN (super-admin only)
+// PROMOTE TO ADMIN
 router.post("/make-admin", async (req, res) => {
   try {
-    if (req.role !== "super-admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Only super-admin can promote users to admin!"
-      });
-    }
-
+    if (req.role !== "super-admin") return res.status(403).json({ success: false, message: "Permission Denied" });
     const { user_id } = req.body;
-
-    if (!user_id) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required!"
-      });
-    }
-
-    const user = await userModel.findOne({ user_id });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found!"
-      });
-    }
-
-    const account = await accountModel.findOne({ user_id });
-    if (account && account.role === "admin") {
-      return res.status(400).json({
-        success: false,
-        message: "User is already an admin!"
-      });
-    }
-
-    await accountModel.findOneAndUpdate(
-      { user_id },
-      { role: "admin" },
-      { new: true }
-    );
-
-    res.status(200).json({
-      success: true,
-      message: `User "${user.full_name}" has been promoted to admin successfully!`
-    });
+    await accountModel.findOneAndUpdate({ user_id }, { role: "admin" });
+    res.status(200).json({ success: true, message: "User Promoted to Admin" });
   } catch (error) {
-    console.error("Error making user admin:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to promote user: " + error.message 
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// DEMOTE ADMIN TO USER (super-admin only)
+// DEMOTE TO USER
 router.post("/demote-admin", async (req, res) => {
   try {
-    if (req.role !== "super-admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Only super-admin can demote admins!"
-      });
-    }
-
+    if (req.role !== "super-admin") return res.status(403).json({ success: false, message: "Permission Denied" });
     const { user_id } = req.body;
-
-    if (!user_id) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required!"
-      });
-    }
-
-    const account = await accountModel.findOne({ user_id });
-    if (!account || account.role !== "admin") {
-      return res.status(400).json({
-        success: false,
-        message: "This user is not an admin!"
-      });
-    }
-
-    if (user_id === req.user_id) {
-      return res.status(400).json({
-        success: false,
-        message: "You cannot demote your own account!"
-      });
-    }
-
-    const user = await userModel.findOne({ user_id });
+    if (user_id === req.user_id) return res.status(400).json({ success: false, message: "Cannot demote self" });
     
-    await accountModel.findOneAndUpdate(
-      { user_id },
-      { role: "user" },
-      { new: true }
-    );
-
-    res.status(200).json({
-      success: true,
-      message: `${user.full_name} has been demoted to regular user successfully!`
-    });
+    await accountModel.findOneAndUpdate({ user_id }, { role: "user" });
+    res.status(200).json({ success: true, message: "Admin Demoted" });
   } catch (error) {
-    console.error("Error demoting admin:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to demote admin: " + error.message 
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
