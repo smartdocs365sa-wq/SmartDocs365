@@ -1,6 +1,7 @@
 // ============================================
 // FILE: Backend/routes/apis/recharge.js
 // ✅ COMPLETE PAYMENT ROUTES (Purchase + Callback)
+// ✅ FIXED: PhonePe API URL structure
 // ============================================
 
 const express = require("express");
@@ -15,17 +16,31 @@ const axios = require('axios');
 const { v4 } = require('uuid');
 const { getCurrentDateTime, addDaysToCurrentDate } = require("../../utils/repetedUsedFunction");
 
-// Environment Variables
+// ============================================
+// ENVIRONMENT VARIABLES
+// ============================================
 const MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || process.env.MERCHANT_ID;
 const SALT_KEY = process.env.PHONEPE_SALT_KEY || process.env.SALT_KEY;
-const SALT_INDEX = process.env.PHONEPE_SALT_INDEX || 1;
+const SALT_INDEX = process.env.PHONEPE_SALT_INDEX || '1';
 const PHONEPE_HOST_URL = process.env.PHONEPE_HOST_URL || 'https://api.phonepe.com/apis/hermes';
+
+console.log('💳 PhonePe Config:', {
+    merchantId: MERCHANT_ID,
+    saltKeyPresent: !!SALT_KEY,
+    hostUrl: PHONEPE_HOST_URL
+});
 
 // ============================================
 // 1. PURCHASE ROUTE - INITIATE PAYMENT
 // ============================================
 router.post("/purchase/plan-id/:id", async (req, res, next) => {
     try {
+        console.log('📝 Purchase Request Received:', {
+            planId: req.params.id,
+            userId: req.user_id,
+            body: req.body
+        });
+
         const plan_id = req.params.id;
         const user_id = req.user_id; // From JWT middleware
 
@@ -55,6 +70,8 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
             });
         }
 
+        console.log('📦 Plan Found:', planInfo);
+
         // Generate Unique IDs
         const recharge_id = v4();
         const order_id = v4();
@@ -82,6 +99,8 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
             Amount: planInfo.plan_price
         });
 
+        console.log('✅ Recharge Entry Created:', recharge_id);
+
         // Prepare PhonePe Payment Payload
         const paymentPayload = {
             merchantId: MERCHANT_ID,
@@ -97,6 +116,8 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
             }
         };
 
+        console.log('💰 Payment Payload:', paymentPayload);
+
         // Encode Payload to Base64
         const base64Payload = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
 
@@ -104,10 +125,15 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
         const checksumString = base64Payload + '/pg/v1/pay' + SALT_KEY;
         const checksum = crypto.createHash('sha256').update(checksumString).digest('hex') + '###' + SALT_INDEX;
 
+        console.log('🔐 Checksum Generated');
+
         // Make Request to PhonePe
+        const phonepeUrl = `${PHONEPE_HOST_URL}/pg/v1/pay`;
+        console.log('📡 PhonePe Request URL:', phonepeUrl);
+
         const options = {
             method: 'POST',
-            url: `${PHONEPE_HOST_URL}/pg/v1/pay`,
+            url: phonepeUrl,
             headers: {
                 accept: 'application/json',
                 'Content-Type': 'application/json',
@@ -119,6 +145,7 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
         };
 
         const response = await axios.request(options);
+        console.log('📥 PhonePe Response:', response.data);
 
         if (response.data.success) {
             return res.json({
@@ -128,6 +155,7 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
                 merchantTransactionId
             });
         } else {
+            console.error('❌ PhonePe Error:', response.data);
             return res.status(400).json({
                 success: false,
                 message: response.data.message || "Payment initiation failed"
@@ -135,7 +163,12 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
         }
 
     } catch (error) {
-        console.error("Payment Initiation Error:", error.response?.data || error.message);
+        console.error("💥 Payment Initiation Error:", {
+            message: error.message,
+            response: error.response?.data,
+            stack: error.stack
+        });
+        
         return res.status(500).json({
             success: false,
             message: "Payment initiation failed: " + (error.response?.data?.message || error.message)
@@ -148,6 +181,11 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
 // ============================================
 router.post("/status-update/:transactionId", async (req, res, next) => {
     try {
+        console.log('📞 Callback Received:', {
+            transactionId: req.params.transactionId,
+            body: req.body
+        });
+
         const recharge_id = req.params?.transactionId;
 
         if (!recharge_id) {
@@ -166,9 +204,12 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
         const checksum = sha256 + "###" + SALT_INDEX;
 
         // Check Payment Status
+        const statusUrl = `${PHONEPE_HOST_URL}/pg/v1/status/${merchantId}/${merchantTransactionId}`;
+        console.log('🔍 Checking Status:', statusUrl);
+
         const options = {
             method: 'GET',
-            url: `${PHONEPE_HOST_URL}/pg/v1/status/${merchantId}/${merchantTransactionId}`,
+            url: statusUrl,
             headers: {
                 accept: 'application/json',
                 'Content-Type': 'application/json',
@@ -178,6 +219,7 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
         };
 
         const response = await axios.request(options);
+        console.log('📊 Status Response:', response.data);
 
         if (response.data.success === true) {
             console.log("✅ Payment Successful:", response.data);
@@ -199,6 +241,8 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
             );
 
             if (rechargeEntry) {
+                console.log('✅ Recharge Activated:', recharge_id);
+
                 // 3. Fetch Plan Details
                 const planInfo = await subcriptionTypesModel.findOne({ 
                     plan_id: rechargeEntry.plan_id 
@@ -227,6 +271,8 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
                         { user_id: rechargeEntry.user_id },
                         { plan_id: planInfo.plan_id }
                     );
+
+                    console.log('✅ Subscription Updated for User:', rechargeEntry.user_id);
                 }
             }
 
@@ -234,12 +280,11 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
             return res.redirect('https://smartdocs365.com/home');
         } else {
             console.log("❌ Payment Failed:", response.data);
-            // Redirect to Home (could be a failure page)
             return res.redirect('https://smartdocs365.com/home');
         }
 
     } catch (error) {
-        console.error("Payment Status Update Error:", error.message);
+        console.error("💥 Payment Status Update Error:", error.message);
         return res.redirect('https://smartdocs365.com/home');
     }
 });
