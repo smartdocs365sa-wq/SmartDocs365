@@ -1,7 +1,6 @@
 // ============================================
 // FILE: Backend/routes/apis/recharge.js
-// ✅ COMPLETE PAYMENT ROUTES (Purchase + Callback)
-// ✅ FIXED: PhonePe API URL structure
+// ✅ COMPLETE FIX: Payment + Callback + Dashboard Update
 // ============================================
 
 const express = require("express");
@@ -189,10 +188,8 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
         const recharge_id = req.params?.transactionId;
 
         if (!recharge_id) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Transaction ID missing!" 
-            });
+            console.error('❌ No transaction ID provided');
+            return res.redirect('https://smartdocs365.com/subscription?error=no_transaction_id');
         }
 
         const merchantTransactionId = req.body.transactionId;
@@ -222,13 +219,14 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
         console.log('📊 Status Response:', response.data);
 
         if (response.data.success === true) {
-            console.log("✅ Payment Successful:", response.data);
+            console.log("✅ Payment Successful - Starting Database Updates");
             
             // 1. Log Payment History
             await PaymentHistory.create({ 
                 recharge_id, 
                 data: response.data 
             });
+            console.log('✅ Payment history logged');
             
             // 2. Activate Recharge Entry
             const rechargeEntry = await rechargeInfoModel.findOneAndUpdate(
@@ -240,52 +238,91 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
                 { new: true }
             );
 
-            if (rechargeEntry) {
-                console.log('✅ Recharge Activated:', recharge_id);
-
-                // 3. Fetch Plan Details
-                const planInfo = await subcriptionTypesModel.findOne({ 
-                    plan_id: rechargeEntry.plan_id 
-                });
-                
-                if (planInfo) {
-                    // 4. Update User Subscription Info
-                    const expiryDate = new Date(rechargeEntry.recharge_expiry_date);
-                    
-                    await userSubcriptionInfoModel.findOneAndUpdate(
-                        { user_id: rechargeEntry.user_id },
-                        {
-                            plan_id: planInfo.plan_id,
-                            plan_name: planInfo.plan_name,
-                            plan_active: true,
-                            pdf_limit: planInfo.pdf_limit,
-                            total_uploads_used: 0, // Reset for new plan
-                            expiry_date: expiryDate,
-                            updated_at: getCurrentDateTime().dateAndTimeString
-                        },
-                        { upsert: true }
-                    );
-
-                    // 5. Update User's Current Plan ID
-                    await userModel.findOneAndUpdate(
-                        { user_id: rechargeEntry.user_id },
-                        { plan_id: planInfo.plan_id }
-                    );
-
-                    console.log('✅ Subscription Updated for User:', rechargeEntry.user_id);
-                }
+            if (!rechargeEntry) {
+                console.error('❌ Recharge entry not found:', recharge_id);
+                return res.redirect('https://smartdocs365.com/subscription?error=recharge_not_found');
             }
 
+            console.log('✅ Recharge Activated:', {
+                recharge_id,
+                user_id: rechargeEntry.user_id,
+                plan_id: rechargeEntry.plan_id
+            });
+
+            // 3. Fetch Plan Details
+            const planInfo = await subcriptionTypesModel.findOne({ 
+                plan_id: rechargeEntry.plan_id 
+            });
+            
+            if (!planInfo) {
+                console.error('❌ Plan not found:', rechargeEntry.plan_id);
+                return res.redirect('https://smartdocs365.com/subscription?error=plan_not_found');
+            }
+
+            console.log('✅ Plan Info Retrieved:', {
+                plan_id: planInfo.plan_id,
+                plan_name: planInfo.plan_name,
+                pdf_limit: planInfo.pdf_limit
+            });
+
+            // 4. Calculate Dates
+            const now = new Date();
+            const expiryDate = new Date(rechargeEntry.recharge_expiry_date);
+
+            console.log('📅 Dates:', {
+                start: now,
+                expiry: expiryDate,
+                duration: planInfo.plan_duration
+            });
+
+            // 5. Update User Subscription Info
+            const subscriptionUpdate = await userSubcriptionInfoModel.findOneAndUpdate(
+                { user_id: rechargeEntry.user_id },
+                {
+                    plan_id: planInfo.plan_id,
+                    plan_name: planInfo.plan_name,
+                    plan_active: true,
+                    pdf_limit: planInfo.pdf_limit,
+                    total_uploads_used: 0, // Reset for new plan
+                    expiry_date: expiryDate,
+                    updated_at: now
+                },
+                { 
+                    upsert: true, // Create if doesn't exist
+                    new: true 
+                }
+            );
+
+            console.log('✅ User Subscription Updated:', subscriptionUpdate);
+
+            // 6. Update User's Current Plan ID
+            const userUpdate = await userModel.findOneAndUpdate(
+                { user_id: rechargeEntry.user_id },
+                { plan_id: planInfo.plan_id },
+                { new: true }
+            );
+
+            console.log('✅ User Model Updated:', {
+                user_id: userUpdate.user_id,
+                plan_id: userUpdate.plan_id
+            });
+
+            console.log('🎉 ALL DATABASE UPDATES COMPLETED SUCCESSFULLY');
+
             // Redirect to Success Page
-            return res.redirect('https://smartdocs365.com/home');
+            return res.redirect('https://smartdocs365.com/subscription?success=true');
+
         } else {
             console.log("❌ Payment Failed:", response.data);
-            return res.redirect('https://smartdocs365.com/home');
+            return res.redirect('https://smartdocs365.com/subscription?error=payment_failed');
         }
 
     } catch (error) {
-        console.error("💥 Payment Status Update Error:", error.message);
-        return res.redirect('https://smartdocs365.com/home');
+        console.error("💥 Payment Status Update Error:", {
+            message: error.message,
+            stack: error.stack
+        });
+        return res.redirect('https://smartdocs365.com/subscription?error=callback_error');
     }
 });
 

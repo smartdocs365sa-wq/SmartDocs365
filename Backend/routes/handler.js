@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/routes/handler.js
-// ✅ FIXED: Public Subscription Route Added
+// ✅ FIXED: Split Recharge Routes (Public Callback + Protected Purchase)
 // ✅ FEATURES: Full PDF Upload Logic Preserved
 // ============================================
 
@@ -50,7 +50,7 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "FINAL-FULL-V8" });
+  res.json({ status: "success", version: "PAYMENT-FIX-V1" });
 });
 
 /* ===============================
@@ -61,8 +61,11 @@ router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
 
 // ✅ CRITICAL FIX: Public Subscription Route
-// This allows the "Choose Your Plan" page to load plans without a token
 router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));
+
+// ✅ NEW: Public Payment Callback Route (PhonePe calls this)
+const rechargeCallbackRouter = require("./apis/recharge");
+router.post("/recharge/status-update/:transactionId", rechargeCallbackRouter);
 
 // Public Blogs Route
 router.get("/public/blogs", async (req, res) => {
@@ -94,7 +97,10 @@ router.use("/subcription-plan", require("./admin/subcriptionPlan"));
 router.use("/admin/blogs", require("./admin/blogs")); 
 router.use("/report", require("./admin/report"));
 router.use("/pdf", require("./apis/pdfData"));
+
+// ✅ Protected Recharge Routes (Purchase & History)
 router.use("/recharge", require("./apis/recharge"));
+
 router.use("/questions", require("./apis/userQuestions"));
 router.use("/import-excel-data", require("./apis/importExcelData"));
 
