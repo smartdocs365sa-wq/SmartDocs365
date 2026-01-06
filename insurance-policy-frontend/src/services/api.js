@@ -1,12 +1,12 @@
 // ============================================
 // FILE: src/services/api.js
-// ✅ FIXED: Uses Vercel Environment Variable
+// ✅ FIXED: Vercel/Render Connection
 // ============================================
 import axios from 'axios';
 
-// 1. Use the environment variable from Vercel. 
-// 2. Fallback to localhost ONLY if the variable is missing (dev mode).
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3033/api';
+// 1. Use the environment variable from Vercel
+// 2. Fallback to Render URL (Critical for Production)
+const API_URL = process.env.REACT_APP_API_URL || 'https://smartdocs365-backend.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_URL,

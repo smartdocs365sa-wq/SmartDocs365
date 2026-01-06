@@ -1,6 +1,5 @@
 // ============================================
 // FILE: insurance-policy-frontend/src/pages/Subscription.jsx
-// ENHANCED WITH PHONEPE PAYMENT INTEGRATION
 // ============================================
 
 import { useState, useEffect } from 'react';
@@ -33,8 +32,11 @@ const Subscription = () => {
   const fetchPlans = async () => {
     try {
       const response = await subscriptionService.getPlans();
+      // Ensure we handle the success/data structure correctly
       if (response.success) {
         setPlans(response.data || []);
+      } else {
+        console.error("Failed to load plans:", response.message);
       }
     } catch (error) {
       console.error('Failed to fetch plans:', error);

@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/routes/handler.js
-// ✅ FIXED: Added Public Blog Route & Blog Model
+// ✅ FIXED: Public Access for Subscription Plans
 // ============================================
 
 const express = require("express");
@@ -13,7 +13,6 @@ const { spawn } = require("child_process");
 const pdfDetailsModel = require("../models/pdfDetailsModel");
 const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel");
-// ✅ Added Blog Model Import
 const blogModel = require("../models/blogModel"); 
 const { v4 } = require("uuid");
 
@@ -50,7 +49,7 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "FINAL-FIXED-V5" });
+  res.json({ status: "success", version: "FINAL-FIXED-V7" });
 });
 
 /* ===============================
@@ -60,10 +59,13 @@ router.use("/user", require("./apis/register"));
 router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
 
-// ✅ NEW: Public Blogs Route (Fetches active blogs for Home Page)
+// ✅ CRITICAL FIX: Public Subscription Route
+// This allows the "Choose Your Plan" page to load plans without a token
+router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));
+
+// Public Blogs Route
 router.get("/public/blogs", async (req, res) => {
   try {
-    // Fetch only active blogs, sorted by newest first
     const blogs = await blogModel.find({ is_active: true }).sort({ created_at: -1 });
     res.json({ success: true, data: blogs });
   } catch (error) {
@@ -86,9 +88,10 @@ router.get("/download-demo-excel", (req, res) => {
 ================================ */
 router.use(verifyJWT);
 
+// Protected User Routes
 router.use("/user", require("./apis/user"));
-router.use("/subcription-plan", require("./admin/subcriptionPlan"));
-router.use("/admin/blogs", require("./admin/blogs")); // Admin management route
+router.use("/subcription-plan", require("./admin/subcriptionPlan")); // Admin/Protected access
+router.use("/admin/blogs", require("./admin/blogs")); 
 router.use("/report", require("./admin/report"));
 router.use("/pdf", require("./apis/pdfData"));
 router.use("/recharge", require("./apis/recharge"));
@@ -99,7 +102,6 @@ router.use("/import-excel-data", require("./apis/importExcelData"));
    PDF UPLOAD ROUTE
 ================================ */
 router.post("/upload-pdf", upload.any(), async (req, res) => {
-  // ... (Keep existing upload logic exactly as is) ...
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ success: false, message: "No file uploaded" });
   }

@@ -5,6 +5,7 @@ import api from './api';
 
 export const subscriptionService = {
   async getPlans() {
+    // ✅ Matches the public route in handler.js
     const response = await api.get('/subcription-plan-direct/list');
     return response.data;
   },
