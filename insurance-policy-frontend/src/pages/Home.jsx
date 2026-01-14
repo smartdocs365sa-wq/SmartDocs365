@@ -2,19 +2,189 @@
 // FILE: src/pages/Home.jsx
 // ✅ FIXED: Login logic now uses direct window.location.href (Fixes double login issue)
 // ✅ FIXED: Added "Forgot Password" link in Admin Modal
-// ✅ FIXED: Replaced local NewsSection with reusable BlogSection component
 // ============================================
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Upload, Shield, TrendingUp, CheckCircle, Lock, Mail, 
-  AlertCircle, UserCog, X, Eye, EyeOff, ArrowRight
+  AlertCircle, UserCog, X, Eye, EyeOff, Video, Calendar, ArrowRight
 } from 'lucide-react'; 
 import logo from '../assets/logo.png';
-// import api from '../services/api'; // Not needed if using BlogSection component
+import api from '../services/api'; 
 import { authService } from '../services/auth'; 
-// import { formatDate } from '../utils/helpers'; // Not needed if using BlogSection component
-import BlogSection from '../components/common/BlogSection';
+import { formatDate } from '../utils/helpers';
+
+// ✅ COMPONENT: News/Blog Section WITH PARAGRAPH FORMATTING
+const NewsSection = () => {
+  const [news, setNews] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
+  const [expandedBlogs, setExpandedBlogs] = useState({});
+  
+  const getImageUrl = (filename) => {
+    if (!filename) return null;
+    if (filename.startsWith('http')) return filename;
+    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3033/api';
+    const rootUrl = apiBase.replace('/api', '');
+    const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
+    return `${rootUrl}${cleanPath.includes('/uploads') ? '' : '/uploads'}${cleanPath}`;
+  };
+
+  // ✅ Format description into paragraphs
+  const formatDescription = (text) => {
+    if (!text) return null;
+    const paragraphs = text.split('\n').filter(p => p.trim());
+    return paragraphs.map((para, idx) => (
+      <p key={idx} style={{ marginBottom: '0.75rem', lineHeight: '1.6' }}>
+        {para.trim()}
+      </p>
+    ));
+  };
+
+  // ✅ Truncate text
+  const truncateText = (text, maxLength = 120) => {
+    if (!text) return '';
+    const plainText = text.replace(/\n/g, ' ').trim();
+    if (plainText.length <= maxLength) return text;
+    return plainText.substring(0, maxLength) + '...';
+  };
+
+  const toggleExpanded = (blogId) => {
+    setExpandedBlogs(prev => ({ ...prev, [blogId]: !prev[blogId] }));
+  };
+
+  useEffect(() => {
+    api.get('/public/blogs', { params: { page, limit: 6 } })
+      .then(res => {
+        if (res.data && res.data.success) {
+          if (page === 1) {
+            setNews(res.data.data || []);
+          } else {
+            setNews(prev => [...prev, ...(res.data.data || [])]);
+          }
+          setPagination(res.data.pagination);
+        } else if (Array.isArray(res.data)) {
+          setNews(res.data);
+        }
+      })
+      .catch(err => console.error("Failed to load news:", err));
+  }, [page]);
+
+  const loadMore = () => setPage(prev => prev + 1);
+
+  if (news.length === 0) return null;
+
+  return (
+    <div style={{ padding: '6rem 2rem', background: '#fff' }}>
+      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+          <span style={{ color: '#2563eb', fontWeight: 700, letterSpacing: '1px', fontSize: '0.875rem', textTransform: 'uppercase' }}>Our Blog</span>
+          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '0.5rem', color: '#111827' }}>Latest Updates & News</h2>
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '2.5rem' }}>
+          {news.map(item => {
+            const isExpanded = expandedBlogs[item._id || item.blog_id];
+            const shouldTruncate = item.description && item.description.length > 120;
+
+            return (
+              <div key={item._id || item.blog_id} 
+                style={{ 
+                  backgroundColor: 'white', borderRadius: '1rem', overflow: 'hidden', 
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', 
+                  border: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-8px)';
+                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                {/* Image */}
+                <div style={{ height: '220px', overflow: 'hidden', backgroundColor: '#f9fafb', position: 'relative' }}>
+                  {item.imageUrl ? (
+                    <img src={getImageUrl(item.imageUrl)} alt={item.title}
+                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                       onError={(e) => e.target.style.display = 'none'} />
+                  ) : (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>📰</div>
+                  )}
+                </div>
+                
+                {/* Content */}
+                <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+                    <Calendar size={14} />
+                    {formatDate(item.createdAt || item.created_at)}
+                  </div>
+                  
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                    {item.title}
+                  </h3>
+                  
+                  {/* ✅ Formatted Description */}
+                  <div style={{ color: '#4b5563', fontSize: '0.95rem', marginBottom: '1rem', flex: 1 }}>
+                    {isExpanded || !shouldTruncate ? (
+                      formatDescription(item.description)
+                    ) : (
+                      <p>{truncateText(item.description)}</p>
+                    )}
+                  </div>
+
+                  {/* Read More */}
+                  {shouldTruncate && (
+                    <button
+                      onClick={() => toggleExpanded(item._id || item.blog_id)}
+                      style={{
+                        background: 'none', border: 'none', color: '#2563eb',
+                        fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+                        padding: 0, marginBottom: '0.5rem', textAlign: 'left'
+                      }}
+                    >
+                      {isExpanded ? '← Show Less' : 'Read More →'}
+                    </button>
+                  )}
+                  
+                  {/* Video Link */}
+                  {item.videoUrl && (
+                    <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '1rem', marginTop: 'auto' }}>
+                      <a href={item.videoUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none' }}>
+                        <Video size={16} /> Watch Video
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Load More Button */}
+        {pagination && pagination.hasMore && (
+          <div style={{ textAlign: 'center', marginTop: '3rem' }}>
+            <button
+              onClick={loadMore}
+              style={{
+                background: '#2563eb', color: 'white', padding: '0.75rem 2rem',
+                borderRadius: '0.5rem', border: 'none', fontSize: '1rem',
+                fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#1d4ed8'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#2563eb'}
+            >
+              Show More ({pagination.totalBlogs - news.length} more articles)
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ✅ COMPONENT: Minimal Footer (Copyright Only)
 const MinimalFooter = () => (
@@ -190,8 +360,8 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ✅ BLOGS SECTION (Updated to use imported component) */}
-      <BlogSection limit={6} showTitle={true} />
+      {/* ✅ BLOGS SECTION */}
+      <NewsSection />
 
       {/* CTA SECTION */}
       <div style={{

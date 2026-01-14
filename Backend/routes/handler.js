@@ -59,7 +59,6 @@ router.get("/", (req, res) => {
 router.use("/user", require("./apis/register"));
 router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
-router.use("/public/blogs", require("./admin/blogs"));
 
 // ✅ CRITICAL FIX: Public Subscription Route
 router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));

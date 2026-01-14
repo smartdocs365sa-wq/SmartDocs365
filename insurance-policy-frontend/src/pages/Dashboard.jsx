@@ -22,7 +22,6 @@ import {
 import api from '../services/api'; 
 import Loader from '../components/common/Loader';
 import { formatDate } from '../utils/helpers';
-import BlogSection from '../components/common/BlogSection';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -387,7 +386,7 @@ const Dashboard = () => {
         </div>
 
         {/* --- NEWS & UPDATES SECTION --- */}
-        <BlogSection limit={3} showTitle={true} />
+        <NewsSection />
 
       </div>
       
@@ -439,5 +438,154 @@ const QuickActionCard = ({ onClick, icon, iconBg, title, subtitle, hoverColor })
     <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>{subtitle}</p>
   </div>
 );
+
+/// ✅ NEWS SECTION COMPONENT WITH PARAGRAPH FORMATTING
+const NewsSection = () => {
+  const [news, setNews] = useState([]);
+  const [expandedBlogs, setExpandedBlogs] = useState({});
+  
+  const getImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3033/api';
+    const rootUrl = apiBase.replace('/api', '');
+    const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+    return `${rootUrl}${cleanPath}`;
+  };
+
+  // ✅ Format description into paragraphs
+  const formatDescription = (text) => {
+    if (!text) return null;
+    const paragraphs = text.split('\n').filter(p => p.trim());
+    return paragraphs.map((para, idx) => (
+      <p key={idx} style={{ marginBottom: '1rem', lineHeight: '1.6' }}>
+        {para.trim()}
+      </p>
+    ));
+  };
+
+  // ✅ Truncate text
+  const truncateText = (text, maxLength = 150) => {
+    if (!text) return '';
+    const plainText = text.replace(/\n/g, ' ').trim();
+    if (plainText.length <= maxLength) return text;
+    return plainText.substring(0, maxLength) + '...';
+  };
+
+  const toggleExpanded = (blogId) => {
+    setExpandedBlogs(prev => ({ ...prev, [blogId]: !prev[blogId] }));
+  };
+  
+  useEffect(() => {
+    api.get('/admin/blogs/list')
+      .then(res => {
+        if (res.data.success) setNews(res.data.data || []);
+      })
+      .catch(err => console.error("Failed to load news", err));
+  }, []);
+
+  if (news.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '3rem' }}>
+      <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: '#111827' }}>
+        Latest Updates
+      </h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+        {news.map(item => {
+          const isExpanded = expandedBlogs[item.blog_id];
+          const shouldTruncate = item.description && item.description.length > 150;
+
+          return (
+            <div key={item.blog_id} style={{ 
+              backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', 
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb', 
+              display: 'flex', flexDirection: 'column',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+            }}
+            >
+              {/* Image */}
+              {item.imageUrl && (
+                <div style={{ height: '180px', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
+                  <img 
+                     src={getImageUrl(item.imageUrl)} 
+                     alt={item.title}
+                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                     onError={(e) => e.target.style.display = 'none'}
+                  />
+                </div>
+              )}
+              
+              {/* Content */}
+              <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827', marginBottom: '0.75rem' }}>
+                  {item.title}
+                </h3>
+                
+                {/* ✅ Formatted Description with Paragraphs */}
+                <div style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem', flex: 1 }}>
+                  {isExpanded || !shouldTruncate ? (
+                    formatDescription(item.description)
+                  ) : (
+                    <p>{truncateText(item.description)}</p>
+                  )}
+                </div>
+
+                {/* Read More Button */}
+                {shouldTruncate && (
+                  <button
+                    onClick={() => toggleExpanded(item.blog_id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#2563eb',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      padding: 0,
+                      marginBottom: '1rem',
+                      textAlign: 'left'
+                    }}
+                  >
+                    {isExpanded ? '← Show Less' : 'Read More →'}
+                  </button>
+                )}
+                
+                {/* Video Link */}
+                {item.videoUrl && (
+                  <a 
+                    href={item.videoUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ 
+                      display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                      color: '#ef4444', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none',
+                      marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #f3f4f6'
+                    }}
+                  >
+                    <Video size={16} />
+                    Watch Video
+                  </a>
+                )}
+                
+                <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#9ca3af' }}>
+                  {formatDate(item.createdAt)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 export default Dashboard;

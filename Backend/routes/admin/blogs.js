@@ -1,27 +1,16 @@
-// ============================================
-// FILE: Backend/routes/admin/blogs.js
-// ✅ FIXED: Added pagination endpoint
-// ============================================
-
 const express = require("express");
 const router = express.Router();
-const {
-    getAllBlogs,
-    getPublicBlogs,
-    createBlog,
-    updateBlog,
-    deleteBlog,
-    getBlog
-} = require("../../controllers/admin/blogsController");
+const blogsController = require("../../controllers/admin/blogsController.js");
+const { upload } = require('../../middleware/uploadImage');
 
-// Admin routes (protected)
-router.get("/list", getAllBlogs);
-router.post("/create", createBlog);
-router.put("/update/:blog_id", updateBlog);
-router.delete("/delete/:blog_id", deleteBlog);
+// Public route (for Dashboard to read)
+router.get("/list", blogsController.list);
 
-// Public routes (accessible without auth)
-router.get("/public", getPublicBlogs); // With pagination support
-router.get("/public/:blog_id", getBlog);
+// Protected Routes (Admin only)
+router.use(require('../../middleware/roleValidation.js'));
+
+router.post('/create', upload.single('image'), blogsController.create);
+router.put('/update/:blog_id', upload.single('image'), blogsController.update); // ✅ Added Update Route
+router.delete("/delete-blog-id/:id", blogsController.deleteBlog);
 
 module.exports = router;
