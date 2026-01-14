@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/routes/handler.js
-// ✅ FINAL FIX: Callback route BEFORE JWT middleware
+// ✅ SIMPLIFIED - Callback in separate file
 // ============================================
 
 const express = require("express");
@@ -15,9 +15,6 @@ const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel");
 const blogModel = require("../models/blogModel"); 
 const { v4 } = require("uuid");
-
-// Import recharge routes
-const rechargeRouter = require("./apis/recharge");
 
 /* ===============================
    MULTER CONFIG
@@ -52,23 +49,22 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "CALLBACK-FIX-V2" });
+  res.json({ status: "success", version: "SEPARATED-CALLBACK-V1" });
 });
 
 /* ===============================
-   PUBLIC ROUTES (No Login Required)
+   PUBLIC ROUTES (No JWT)
 ================================ */
 router.use("/user", require("./apis/register"));
 router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
 router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));
 
-// ✅ CRITICAL FIX: PhonePe Callback Route (MUST BE BEFORE JWT MIDDLEWARE)
-// This route MUST be public because PhonePe servers call it without a token
-console.log('✅ Registering PUBLIC callback route: POST /api/recharge/status-update/:transactionId');
-router.post("/recharge/status-update/:transactionId", rechargeRouter);
+// ✅ CRITICAL: Dedicated Payment Callback (COMPLETELY SEPARATE)
+console.log('🔔 Registering PUBLIC callback: POST /api/recharge/status-update/*');
+router.use("/recharge/status-update", require("./apis/paymentCallback"));
 
-// Public Blogs Route
+// Public Blogs
 router.get("/public/blogs", async (req, res) => {
   try {
     const blogs = await blogModel.find({ is_active: true }).sort({ createdAt: -1 });
@@ -89,9 +85,8 @@ router.get("/download-demo-excel", (req, res) => {
 });
 
 /* ===============================
-   PROTECTED ROUTES (REQUIRE JWT)
+   PROTECTED ROUTES (JWT Required)
 ================================ */
-console.log('✅ Applying JWT middleware to protected routes');
 router.use(verifyJWT);
 
 router.use("/user", require("./apis/user"));
@@ -102,12 +97,11 @@ router.use("/pdf", require("./apis/pdfData"));
 router.use("/questions", require("./apis/userQuestions"));
 router.use("/import-excel-data", require("./apis/importExcelData"));
 
-// ✅ Protected Recharge Routes (Purchase & History only, NOT callback)
-console.log('✅ Registering PROTECTED routes: POST /api/recharge/purchase/* and GET /api/recharge/history');
-router.use("/recharge", rechargeRouter);
+// Protected recharge routes (purchase/history only)
+router.use("/recharge", require("./apis/recharge"));
 
 /* ===============================
-   PDF UPLOAD ROUTE (FULL LOGIC)
+   PDF UPLOAD (Preserved)
 ================================ */
 router.post("/upload-pdf", upload.any(), async (req, res) => {
   if (!req.files || req.files.length === 0) {
@@ -235,9 +229,6 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
   });
 });
 
-/* ===============================
-   FILE DOWNLOAD
-================================ */
 router.get("/download/:filename", (req, res) => {
   const filePath = path.join(__dirname, "../uploads", req.params.filename);
   if (!fs.existsSync(filePath)) {
