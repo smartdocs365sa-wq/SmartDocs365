@@ -1,7 +1,6 @@
 // ============================================
 // FILE: Backend/routes/handler.js
-// ✅ FIXED: Split Recharge Routes (Public Callback + Protected Purchase)
-// ✅ FEATURES: Full PDF Upload Logic Preserved
+// ✅ FINAL FIX: Callback route BEFORE JWT middleware
 // ============================================
 
 const express = require("express");
@@ -16,6 +15,9 @@ const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel");
 const blogModel = require("../models/blogModel"); 
 const { v4 } = require("uuid");
+
+// Import recharge routes
+const rechargeRouter = require("./apis/recharge");
 
 /* ===============================
    MULTER CONFIG
@@ -50,7 +52,7 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "PAYMENT-FIX-V1" });
+  res.json({ status: "success", version: "CALLBACK-FIX-V2" });
 });
 
 /* ===============================
@@ -59,18 +61,17 @@ router.get("/", (req, res) => {
 router.use("/user", require("./apis/register"));
 router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
-
-// ✅ CRITICAL FIX: Public Subscription Route
 router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));
 
-// ✅ NEW: Public Payment Callback Route (PhonePe calls this)
-const rechargeCallbackRouter = require("./apis/recharge");
-router.post("/recharge/status-update/:transactionId", rechargeCallbackRouter);
+// ✅ CRITICAL FIX: PhonePe Callback Route (MUST BE BEFORE JWT MIDDLEWARE)
+// This route MUST be public because PhonePe servers call it without a token
+console.log('✅ Registering PUBLIC callback route: POST /api/recharge/status-update/:transactionId');
+router.post("/recharge/status-update/:transactionId", rechargeRouter);
 
 // Public Blogs Route
 router.get("/public/blogs", async (req, res) => {
   try {
-    const blogs = await blogModel.find({ is_active: true }).sort({ created_at: -1 });
+    const blogs = await blogModel.find({ is_active: true }).sort({ createdAt: -1 });
     res.json({ success: true, data: blogs });
   } catch (error) {
     console.error("Public Blog Fetch Error:", error);
@@ -90,6 +91,7 @@ router.get("/download-demo-excel", (req, res) => {
 /* ===============================
    PROTECTED ROUTES (REQUIRE JWT)
 ================================ */
+console.log('✅ Applying JWT middleware to protected routes');
 router.use(verifyJWT);
 
 router.use("/user", require("./apis/user"));
@@ -97,12 +99,12 @@ router.use("/subcription-plan", require("./admin/subcriptionPlan"));
 router.use("/admin/blogs", require("./admin/blogs")); 
 router.use("/report", require("./admin/report"));
 router.use("/pdf", require("./apis/pdfData"));
-
-// ✅ Protected Recharge Routes (Purchase & History)
-router.use("/recharge", require("./apis/recharge"));
-
 router.use("/questions", require("./apis/userQuestions"));
 router.use("/import-excel-data", require("./apis/importExcelData"));
+
+// ✅ Protected Recharge Routes (Purchase & History only, NOT callback)
+console.log('✅ Registering PROTECTED routes: POST /api/recharge/purchase/* and GET /api/recharge/history');
+router.use("/recharge", rechargeRouter);
 
 /* ===============================
    PDF UPLOAD ROUTE (FULL LOGIC)
