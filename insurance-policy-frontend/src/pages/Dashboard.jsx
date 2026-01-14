@@ -22,6 +22,7 @@ import {
 import api from '../services/api'; 
 import Loader from '../components/common/Loader';
 import { formatDate } from '../utils/helpers';
+import BlogSection from '../components/common/BlogSection';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -386,7 +387,7 @@ const Dashboard = () => {
         </div>
 
         {/* --- NEWS & UPDATES SECTION --- */}
-        <NewsSection />
+        <BlogSection limit={3} showTitle={true} />
 
       </div>
       
@@ -438,93 +439,5 @@ const QuickActionCard = ({ onClick, icon, iconBg, title, subtitle, hoverColor })
     <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>{subtitle}</p>
   </div>
 );
-
-// ✅ NEWS SECTION COMPONENT
-const NewsSection = () => {
-  const [news, setNews] = useState([]);
-  
-  // ✅ FIX: Use a consistent Base URL helper
-  const getImageUrl = (imageUrl) => {
-    if (!imageUrl) return null;
-    if (imageUrl.startsWith('http')) return imageUrl;
-    
-    // Use the exact same logic as api.js to avoid "localhost" issues
-    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3033/api';
-    // Remove the trailing '/api' to get the root URL (e.g., https://backend.com)
-    const rootUrl = apiBase.replace('/api', '');
-    
-    // Ensure the image path starts with '/'
-    const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-    return `${rootUrl}${cleanPath}`;
-  };
-  
-  useEffect(() => {
-    // Fetch blogs using the public list endpoint
-    api.get('/admin/blogs/list')
-      .then(res => {
-        if (res.data.success) setNews(res.data.data || []);
-      })
-      .catch(err => console.error("Failed to load news", err));
-  }, []);
-
-  if (news.length === 0) return null;
-
-  return (
-    <div style={{ marginTop: '3rem' }}>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: '#111827' }}>
-        Latest Updates
-      </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-        {news.map(item => (
-          <div key={item.blog_id} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column' }}>
-            
-            {/* Image */}
-            {item.imageUrl && (
-              <div style={{ height: '180px', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
-                <img 
-                   src={getImageUrl(item.imageUrl)} 
-                   alt={item.title}
-                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                   onError={(e) => e.target.style.display = 'none'}
-                />
-              </div>
-            )}
-            
-            {/* Content */}
-            <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827', marginBottom: '0.75rem' }}>
-                {item.title}
-              </h3>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', lineHeight: '1.5', marginBottom: '1.5rem', flex: 1 }}>
-                {item.description}
-              </p>
-              
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
-                {item.videoUrl && (
-                  <a 
-                    href={item.videoUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    style={{ 
-                      display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                      color: '#ef4444', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none' 
-                    }}
-                  >
-                    <Video size={16} />
-                    Watch Video
-                  </a>
-                )}
-              </div>
-              <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-                Posted on {formatDate(item.createdAt)}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 export default Dashboard;

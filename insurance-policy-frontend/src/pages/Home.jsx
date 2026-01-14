@@ -2,112 +2,19 @@
 // FILE: src/pages/Home.jsx
 // ✅ FIXED: Login logic now uses direct window.location.href (Fixes double login issue)
 // ✅ FIXED: Added "Forgot Password" link in Admin Modal
+// ✅ FIXED: Replaced local NewsSection with reusable BlogSection component
 // ============================================
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Upload, Shield, TrendingUp, CheckCircle, Lock, Mail, 
-  AlertCircle, UserCog, X, Eye, EyeOff, Video, Calendar, ArrowRight
+  AlertCircle, UserCog, X, Eye, EyeOff, ArrowRight
 } from 'lucide-react'; 
 import logo from '../assets/logo.png';
-import api from '../services/api'; 
+// import api from '../services/api'; // Not needed if using BlogSection component
 import { authService } from '../services/auth'; 
-import { formatDate } from '../utils/helpers';
-
-// ✅ COMPONENT: News/Blog Section
-const NewsSection = () => {
-  const [news, setNews] = useState([]);
-  
-  const getImageUrl = (filename) => {
-    if (!filename) return null;
-    if (filename.startsWith('http')) return filename;
-    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3033/api';
-    const rootUrl = apiBase.replace('/api', '');
-    const cleanPath = filename.startsWith('/') ? filename : `/${filename}`;
-    return `${rootUrl}${cleanPath.includes('/uploads') ? '' : '/uploads'}${cleanPath}`;
-  };
-
-  useEffect(() => {
-    api.get('/public/blogs')
-      .then(res => {
-        if (res.data && res.data.success) {
-          setNews(res.data.data || []);
-        } else if (Array.isArray(res.data)) {
-          setNews(res.data);
-        }
-      })
-      .catch(err => console.error("Failed to load news:", err));
-  }, []);
-
-  if (news.length === 0) return null;
-
-  return (
-    <div style={{ padding: '6rem 2rem', background: '#fff' }}>
-      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-          <span style={{ color: '#2563eb', fontWeight: 700, letterSpacing: '1px', fontSize: '0.875rem', textTransform: 'uppercase' }}>Our Blog</span>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '0.5rem', color: '#111827' }}>Latest Updates & News</h2>
-        </div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '2.5rem' }}>
-          {news.map(item => (
-            <div key={item._id} 
-              style={{ 
-                backgroundColor: 'white', borderRadius: '1rem', overflow: 'hidden', 
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', 
-                border: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-8px)';
-                e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-              }}
-            >
-              <div style={{ height: '220px', overflow: 'hidden', backgroundColor: '#f9fafb', position: 'relative' }}>
-                {item.imageUrl ? (
-                  <img src={getImageUrl(item.imageUrl)} alt={item.title}
-                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                     onError={(e) => e.target.style.display = 'none'} />
-                ) : (
-                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>📰</div>
-                )}
-              </div>
-              
-              <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-                  <Calendar size={14} />
-                  {formatDate(item.createdAt || item.created_at)}
-                </div>
-                
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: '0.75rem', lineHeight: 1.4 }}>
-                  {item.title}
-                </h3>
-                <p style={{ color: '#4b5563', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', flex: 1 }}>
-                  {item.description && item.description.length > 100 
-                    ? item.description.substring(0, 100) + '...' 
-                    : item.description}
-                </p>
-                
-                {item.videoUrl && (
-                  <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '1rem', marginTop: 'auto' }}>
-                    <a href={item.videoUrl} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none' }}>
-                      <Video size={16} /> Watch Video
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
+// import { formatDate } from '../utils/helpers'; // Not needed if using BlogSection component
+import BlogSection from '../components/common/BlogSection';
 
 // ✅ COMPONENT: Minimal Footer (Copyright Only)
 const MinimalFooter = () => (
@@ -283,8 +190,8 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ✅ BLOGS SECTION */}
-      <NewsSection />
+      {/* ✅ BLOGS SECTION (Updated to use imported component) */}
+      <BlogSection limit={6} showTitle={true} />
 
       {/* CTA SECTION */}
       <div style={{
