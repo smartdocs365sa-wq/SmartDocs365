@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/routes/handler.js
-// ✅ SIMPLIFIED - Callback in separate file
+// ✅ FIXED - Increments upload counter
 // ============================================
 
 const express = require("express");
@@ -13,6 +13,7 @@ const { spawn } = require("child_process");
 const pdfDetailsModel = require("../models/pdfDetailsModel");
 const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel");
+const userSubcriptionInfoModel = require("../models/userSubcriptionInfoModel"); // ✅ ADDED
 const blogModel = require("../models/blogModel"); 
 const { v4 } = require("uuid");
 
@@ -49,7 +50,7 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "SEPARATED-CALLBACK-V1" });
+  res.json({ status: "success", version: "FIXED-COUNTER-INCREMENT" });
 });
 
 /* ===============================
@@ -101,7 +102,7 @@ router.use("/import-excel-data", require("./apis/importExcelData"));
 router.use("/recharge", require("./apis/recharge"));
 
 /* ===============================
-   PDF UPLOAD (Preserved)
+   PDF UPLOAD - ✅ FIXED WITH COUNTER INCREMENT
 ================================ */
 router.post("/upload-pdf", upload.any(), async (req, res) => {
   if (!req.files || req.files.length === 0) {
@@ -111,6 +112,40 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
   const user_id = req.user_id;
   if (!user_id) return res.status(401).json({ success: false, message: "User not authenticated" });
 
+  console.log('\n📤 PDF Upload Request:');
+  console.log('   User:', user_id);
+  console.log('   Files:', req.files.length);
+
+  // ✅ Get user's subscription info (for counter)
+  const userSubscription = await userSubcriptionInfoModel.findOne({ user_id });
+  
+  if (!userSubscription) {
+    return res.status(403).json({
+      success: false,
+      message: "No subscription found. Please purchase a plan first."
+    });
+  }
+
+  console.log('   Current Counter:', userSubscription.total_uploads_used);
+  console.log('   Limit:', userSubscription.pdf_limit);
+
+  // Check limit using the counter from subscription
+  if (userSubscription.total_uploads_used >= userSubscription.pdf_limit) {
+    return res.status(403).json({
+      success: false,
+      message: `Upload limit reached! Used ${userSubscription.total_uploads_used} of ${userSubscription.pdf_limit}. Upgrade plan.`
+    });
+  }
+
+  const remainingUploads = userSubscription.pdf_limit - userSubscription.total_uploads_used;
+  if (req.files.length > remainingUploads) {
+    return res.status(403).json({
+      success: false,
+      message: `Limit exceeded. You can only upload ${remainingUploads} more file(s).`
+    });
+  }
+
+  // Get active recharge for tagging PDFs
   const activeRecharge = await rechargeInfoModel.findOne({
     user_id,
     is_active: true,
@@ -120,32 +155,14 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
   if (!activeRecharge) {
     return res.status(403).json({
       success: false,
-      message: "No active subscription found. Please purchase a plan first."
+      message: "No active recharge found."
     });
   }
 
   const recharge_id = activeRecharge.recharge_id;
-  const planInfo = await subcriptionTypesModel.findOne({ plan_id: activeRecharge.plan_id });
-  const pdfCount = await pdfDetailsModel.countDocuments({ recharge_id });
-  const pdfLimit = planInfo?.pdf_limit || 0;
-
-  if (pdfCount >= pdfLimit) {
-    return res.status(403).json({
-      success: false,
-      message: `Upload limit reached! Used ${pdfCount} of ${pdfLimit}. Upgrade plan.`
-    });
-  }
-
-  const remainingUploads = pdfLimit - pdfCount;
-  if (req.files.length > remainingUploads) {
-    return res.status(403).json({
-      success: false,
-      message: `Limit exceeded. You can only upload ${remainingUploads} more file(s).`
-    });
-  }
-
   const results = [];
   const process_id = v4();
+  let successfulUploads = 0; // ✅ Track successful uploads
 
   for (let i = 0; i < req.files.length; i++) {
     const filePath = req.files[i].path;
@@ -204,6 +221,8 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
           };
 
           const saved = await pdfDetailsModel.create(payload);
+          successfulUploads++; // ✅ Count successful upload
+          
           results.push({
             document_id: saved.document_id,
             file_name: saved.file_name,
@@ -222,10 +241,32 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
     });
   }
 
+  // ✅ CRITICAL FIX: INCREMENT THE COUNTER
+  if (successfulUploads > 0) {
+    console.log(`\n✅ Incrementing counter by ${successfulUploads}...`);
+    
+    const updatedSubscription = await userSubcriptionInfoModel.findOneAndUpdate(
+      { user_id },
+      { 
+        $inc: { total_uploads_used: successfulUploads },
+        updated_at: new Date()
+      },
+      { new: true }
+    );
+
+    console.log('   New Counter:', updatedSubscription.total_uploads_used);
+    console.log('   Remaining:', updatedSubscription.pdf_limit - updatedSubscription.total_uploads_used);
+  }
+
   res.json({ 
     success: true, 
     data: results,
-    message: `${results.length} file(s) uploaded successfully.`
+    message: `${results.length} file(s) uploaded successfully.`,
+    uploadStats: {
+      successful: successfulUploads,
+      failed: results.length - successfulUploads,
+      remaining: userSubscription.pdf_limit - (userSubscription.total_uploads_used + successfulUploads)
+    }
   });
 });
 
