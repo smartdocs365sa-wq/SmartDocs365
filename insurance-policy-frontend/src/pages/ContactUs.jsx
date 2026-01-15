@@ -112,7 +112,7 @@ const ContactUs = () => {
                 <div>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.25rem' }}>Visit Us</h3>
                   <p style={{ color: '#6b7280', margin: 0, fontSize: '1rem' }}>
-                    Chennai, Tamil Nadu, India
+                  502, Soni Apt, SVP Road, Borivali (W) Mumbai 400103
                   </p>
                 </div>
               </div>
