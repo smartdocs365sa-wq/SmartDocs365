@@ -91,8 +91,7 @@ const Policies = () => {
         setSelectedPolicyIds([]); 
 
         // 1. Calculate Real-Time Usage (Exclude Excel Imports)
-        const pdfPolicies = allPolicies.filter(p => !p.export_data && !p.is_manual);
-        const pdfUsed = pdfPolicies.length;
+        pdfUsed = statsRes.data.data.uploadsUsed || 0; // ✅ Uses DB counter = 0
 
         // 2. Get Limit from Backend Stats
         let limit = 0;
