@@ -78,37 +78,35 @@ const Policies = () => {
     try {
       setRefreshing(true);
        
-      // Run both requests in parallel for speed
       const [policiesRes, statsRes] = await Promise.all([
         policyService.getPolicies(),
         api.get('/user/dashboard-stats')
       ]);
-
-      // ✅ Declare variables BEFORE the if block
+  
+      // ✅ Declare variables FIRST
       let pdfUsed = 0;
       let limit = 0;
       let planName = 'Free Plan';
-
+  
       if (policiesRes.success) {
         const allPolicies = policiesRes.data || [];
         setPolicies(allPolicies);
         setSelectedPolicyIds([]); 
-
-        // ✅ Get counter and limit from backend
+  
+        // ✅ Get counter from backend (NOT from counting files!)
         if (statsRes.data && statsRes.data.success) {
-            pdfUsed = statsRes.data.data.uploadsUsed || 0; // ✅ Use DB counter
-            limit = statsRes.data.data.uploadsLimit || 0;
-            planName = statsRes.data.data.planName || 'Free Plan';
+          pdfUsed = statsRes.data.data.uploadsUsed || 0; // ✅ THIS SHOULD BE 0
+          limit = statsRes.data.data.uploadsLimit || 0;   // ✅ THIS SHOULD BE 10
+          planName = statsRes.data.data.planName || 'Free Plan';
         }
-
-        // Determine if Limit is Reached
+  
         const isLimitReached = limit > 0 && pdfUsed >= limit;
-
+  
         setUsageStats({
-            pdfUsed,
-            limit,
-            isLimitReached,
-            planName
+          pdfUsed,    // ✅ Should be 0, not 13
+          limit,      // ✅ Should be 10
+          isLimitReached,
+          planName
         });
       }
     } catch (error) {
