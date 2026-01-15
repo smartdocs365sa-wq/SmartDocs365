@@ -74,7 +74,6 @@ const Policies = () => {
     fetchPoliciesAndStats();
   }, []);
 
-  // ✅ FETCH POLICIES & STATS TOGETHER
   const fetchPoliciesAndStats = async () => {
     try {
       setRefreshing(true);
@@ -85,24 +84,24 @@ const Policies = () => {
         api.get('/user/dashboard-stats')
       ]);
 
+      // ✅ Declare variables BEFORE the if block
+      let pdfUsed = 0;
+      let limit = 0;
+      let planName = 'Free Plan';
+
       if (policiesRes.success) {
         const allPolicies = policiesRes.data || [];
         setPolicies(allPolicies);
         setSelectedPolicyIds([]); 
 
-        // 1. Calculate Real-Time Usage (Exclude Excel Imports)
-        pdfUsed = statsRes.data.data.uploadsUsed || 0; // ✅ Uses DB counter = 0
-
-        // 2. Get Limit from Backend Stats
-        let limit = 0;
-        let planName = 'Free Plan';
-        
+        // ✅ Get counter and limit from backend
         if (statsRes.data && statsRes.data.success) {
+            pdfUsed = statsRes.data.data.uploadsUsed || 0; // ✅ Use DB counter
             limit = statsRes.data.data.uploadsLimit || 0;
             planName = statsRes.data.data.planName || 'Free Plan';
         }
 
-        // 3. Determine if Limit is Reached
+        // Determine if Limit is Reached
         const isLimitReached = limit > 0 && pdfUsed >= limit;
 
         setUsageStats({
