@@ -80,23 +80,43 @@ const Dashboard = () => {
     return isNaN(date.getTime()) ? null : date;
   };
 
+  // ✅ REPLACED FUNCTION
   const fetchDashboardData = async () => {
     try {
       setRefreshing(true);
+      
+      // ✅ CRITICAL FIX: Use backend's real counter
       const statsResponse = await api.get('/user/dashboard-stats');
-      const backendStats = statsResponse.data.success ? statsResponse.data.data : {};
+      
+      console.log('📊 Backend Stats Response:', statsResponse.data);
+      
+      if (!statsResponse.data.success) {
+        console.error('❌ Stats fetch failed:', statsResponse.data);
+        return;
+      }
+      
+      const backendStats = statsResponse.data.data;
+      
+      // Get policies for policy counts
       const policiesResponse = await api.get('/pdf/list');
       
       if (policiesResponse.data.success) {
         const allPolicies = policiesResponse.data.data || [];
         const pdfPolicies = allPolicies.filter(p => !p.export_data && !p.is_manual);
         const excelPolicies = allPolicies.filter(p => p.export_data || p.is_manual);
-        const usedCount = pdfPolicies.length;
+        
+        // ✅ CRITICAL: Use backend's counter, NOT file count
+        const usedCount = backendStats.uploadsUsed || 0; // From DB
         const limit = backendStats.uploadsLimit || 0; 
         const percentage = limit > 0 ? Math.min((usedCount / limit) * 100, 100) : 0;
 
+        console.log('📈 Dashboard Calculation:');
+        console.log('   PDF Used (from DB):', usedCount);
+        console.log('   PDF Limit:', limit);
+        console.log('   Percentage:', percentage.toFixed(1) + '%');
+
         setRealTimeStats({
-          pdfUsed: usedCount,
+          pdfUsed: usedCount,  // ✅ Use DB value
           excelUsed: excelPolicies.length,
           totalLimit: limit,
           percentage: percentage,
@@ -104,6 +124,7 @@ const Dashboard = () => {
           expiryDate: backendStats.expiryDate
         });
 
+        // Calculate policy status
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         const thirtyDaysFromNow = new Date(now);
