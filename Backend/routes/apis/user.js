@@ -1,5 +1,5 @@
 // ============================================
-// FILE: Backend/routes/apis/user.js (COMPLETE FIX)
+// FILE: Backend/routes/apis/user.js (COMPLETE FIX - NO AUTO SYNC)
 // ============================================
 
 const express = require("express");
@@ -118,7 +118,7 @@ router.get("/get-user-details", async (req, res) => {
 });
 
 // ========================================
-// 2. ✅ FIXED DASHBOARD STATS
+// 2. ✅ FIXED DASHBOARD STATS - NO AUTO SYNC
 // ========================================
 
 router.get("/dashboard-stats", async (req, res) => {
@@ -127,14 +127,13 @@ router.get("/dashboard-stats", async (req, res) => {
     
     console.log('📊 Dashboard Stats Request for user:', user_id);
 
-    // ✅ CRITICAL FIX: Get or create subscription if missing
+    // ✅ Get subscription
     let subscription = await userSubcriptionInfoModel.findOne({ user_id });
     
     // ✅ If no subscription exists, create one with Free Trial
     if (!subscription) {
       console.log('⚠️  No subscription found, creating Free Trial...');
       
-      // Find Free Trial plan
       const freeTrialPlan = await subcriptionTypesModel.findOne({ 
         plan_name: { $regex: /free trial/i } 
       });
@@ -148,7 +147,7 @@ router.get("/dashboard-stats", async (req, res) => {
           pdf_limit: freeTrialPlan.pdf_limit || 10,
           total_uploads_used: 0,
           plan_active: true,
-          expiry_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days
+          expiry_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
           created_at: new Date(),
           updated_at: new Date()
         });
@@ -162,23 +161,11 @@ router.get("/dashboard-stats", async (req, res) => {
       }
     }
 
-    // ✅ Now calculate actual counts from database
-    const actualUploadCount = await pdfDetailsModel.countDocuments({ 
-      user_id 
-      // No is_active filter - counts ALL uploads (Option A)
-    });
-    
+    // ✅ CRITICAL: Use the counter from DB WITHOUT syncing
     console.log(`📈 User ${user_id}:`);
-    console.log(`   Subscription counter: ${subscription.total_uploads_used}`);
-    console.log(`   Actual DB count: ${actualUploadCount}`);
-    
-    // ✅ If counts don't match, sync them
-    if (subscription.total_uploads_used !== actualUploadCount) {
-      console.log('🔄 Syncing counter...');
-      subscription.total_uploads_used = actualUploadCount;
-      await subscription.save();
-      console.log(`✅ Counter synced to ${actualUploadCount}`);
-    }
+    console.log(`   Plan: ${subscription.plan_name}`);
+    console.log(`   Counter (from DB): ${subscription.total_uploads_used}`);
+    console.log(`   Limit: ${subscription.pdf_limit}`);
 
     // Prepare response data
     let planName = subscription.plan_name || "Free Trial";
@@ -238,14 +225,10 @@ router.get("/dashboard-stats", async (req, res) => {
     });
 
     console.log('📊 Sending response:', {
-      totalPolicies,
-      activePolicies,
-      expiringSoon,
-      expired,
       planName,
       uploadsUsed,
       uploadsLimit,
-      uploadPercentage
+      uploadPercentage: uploadPercentage + '%'
     });
 
     res.json({
