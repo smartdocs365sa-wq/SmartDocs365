@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/routes/apis/paymentCallback.js
-// ✅ DEDICATED PUBLIC CALLBACK - NO JWT
+// ✅ FIXED: Decode PhonePe base64 response
 // ============================================
 
 const express = require("express");
@@ -11,68 +11,49 @@ const userSubcriptionInfoModel = require('../../models/userSubcriptionInfoModel.
 const userModel = require('../../models/userModel.js');
 const PaymentHistory = require('../../models/paymentHistory.js');
 const crypto = require('crypto');
-const axios = require('axios');
 
 const MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || process.env.MERCHANT_ID;
 const SALT_KEY = process.env.PHONEPE_SALT_KEY || process.env.SALT_KEY;
 const SALT_INDEX = process.env.PHONEPE_SALT_INDEX || '1';
-const PHONEPE_HOST_URL = process.env.PHONEPE_HOST_URL || 'https://api.phonepe.com/apis/hermes';
 
 // ============================================
-// PAYMENT CALLBACK - COMPLETELY PUBLIC
+// PAYMENT CALLBACK - PUBLIC ROUTE
 // ============================================
 router.post("/:transactionId", async (req, res) => {
     try {
-        console.log('\n');
-        console.log('═══════════════════════════════════════════');
+        console.log('\n═══════════════════════════════════════════');
         console.log('🔔 PHONEPE CALLBACK RECEIVED');
         console.log('═══════════════════════════════════════════');
-        console.log('Transaction ID:', req.params.transactionId);
-        console.log('Request Body:', JSON.stringify(req.body, null, 2));
-        console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
-        console.log('═══════════════════════════════════════════\n');
-
+        
         const recharge_id = req.params.transactionId;
+        console.log('Transaction ID:', recharge_id);
+        console.log('Raw Body:', JSON.stringify(req.body, null, 2));
 
         if (!recharge_id) {
             console.error('❌ No transaction ID');
             return res.redirect('https://smartdocs365.com/subscription?error=no_id');
         }
 
-        const merchantTransactionId = req.body.transactionId;
-        const merchantId = req.body.merchantId;
+        // ✅ CRITICAL FIX: Decode PhonePe's base64 response
+        let paymentData;
+        if (req.body.response) {
+            console.log('🔓 Decoding base64 response from PhonePe...');
+            const decodedResponse = Buffer.from(req.body.response, 'base64').toString('utf8');
+            paymentData = JSON.parse(decodedResponse);
+            console.log('📦 Decoded Payment Data:', JSON.stringify(paymentData, null, 2));
+        } else {
+            console.error('❌ No response field in callback');
+            return res.redirect('https://smartdocs365.com/subscription?error=no_response');
+        }
 
-        console.log('🔍 Verifying payment status with PhonePe...');
-
-        // Generate Checksum
-        const string = `/pg/v1/status/${merchantId}/${merchantTransactionId}` + SALT_KEY;
-        const sha256 = crypto.createHash('sha256').update(string).digest('hex');
-        const checksum = sha256 + "###" + SALT_INDEX;
-
-        // Check Payment Status
-        const statusUrl = `${PHONEPE_HOST_URL}/pg/v1/status/${merchantId}/${merchantTransactionId}`;
-        
-        const options = {
-            method: 'GET',
-            url: statusUrl,
-            headers: {
-                accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-VERIFY': checksum,
-                'X-MERCHANT-ID': merchantId
-            }
-        };
-
-        const response = await axios.request(options);
-        console.log('📊 PhonePe Status Response:', JSON.stringify(response.data, null, 2));
-
-        if (response.data.success === true) {
+        // Check if payment was successful
+        if (paymentData.success === true && paymentData.code === 'PAYMENT_SUCCESS') {
             console.log('\n✅ PAYMENT SUCCESSFUL - UPDATING DATABASE...\n');
             
             // 1. Save Payment History
             await PaymentHistory.create({ 
                 recharge_id, 
-                data: response.data,
+                data: paymentData,
                 created_at: new Date()
             });
             console.log('✅ Step 1/5: Payment history saved');
@@ -133,7 +114,8 @@ router.post("/:transactionId", async (req, res) => {
             );
 
             console.log('✅ Step 4/5: User subscription updated');
-            console.log('   New Counter:', subscriptionUpdate.total_uploads_used);
+            console.log('   Counter Reset:', subscriptionUpdate.total_uploads_used);
+            console.log('   New Limit:', subscriptionUpdate.pdf_limit);
             console.log('   Expiry:', expiryDate);
 
             // 5. Update User Model
@@ -144,17 +126,21 @@ router.post("/:transactionId", async (req, res) => {
             );
 
             console.log('✅ Step 5/5: User plan_id updated');
-            console.log('   User:', userUpdate.email_address);
+            console.log('   User Email:', userUpdate.email_address);
             console.log('   New Plan ID:', userUpdate.plan_id);
 
             console.log('\n═══════════════════════════════════════════');
             console.log('🎉 DATABASE UPDATE COMPLETE!');
+            console.log('User:', userUpdate.email_address);
+            console.log('New Plan:', planInfo.plan_name);
+            console.log('Upload Limit:', `0/${planInfo.pdf_limit}`);
             console.log('═══════════════════════════════════════════\n');
 
             return res.redirect('https://smartdocs365.com/subscription?success=true');
 
         } else {
-            console.log('❌ Payment verification failed:', response.data);
+            console.log('❌ Payment not successful:', paymentData.code);
+            console.log('Message:', paymentData.message);
             return res.redirect('https://smartdocs365.com/subscription?error=payment_failed');
         }
 
