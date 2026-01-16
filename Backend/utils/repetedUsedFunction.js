@@ -1,13 +1,26 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ ULTIMATE: Zoho Mail API (Port 443 - Always Works!)
+// ✅ FINAL SOLUTION: Resend API (Port 443 - Always Works!)
 // ============================================
-const nodemailer = require("nodemailer");
-const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
 const Handlebars = require('handlebars');
 const crypto = require('crypto');
+
+// Try to load Resend
+let Resend;
+let resend;
+try {
+  const ResendModule = require('resend');
+  Resend = ResendModule.Resend;
+  
+  if (process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+    console.log('✅ Resend Email API initialized');
+  }
+} catch (e) {
+  console.log('⚠️ Resend not installed. Run: npm install resend');
+}
 
 // HTML Template Paths
 const ResetPasswordMail = path.join(__dirname, "../html/", "ResetPasswordMail.html"); 
@@ -21,140 +34,42 @@ const algorithm = 'aes-256-cbc';
 const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
 
 /* ============================================================
-   ✅ ZOHO MAIL API CONFIGURATION (Port 443 - Always Works!)
+   EMAIL SENDING FUNCTION
    ============================================================ */
 
-// Zoho OAuth tokens
-let zohoAccessToken = null;
-let tokenExpiry = null;
-
-// Get fresh access token
-async function getZohoAccessToken() {
-  // If token is still valid, return it
-  if (zohoAccessToken && tokenExpiry && Date.now() < tokenExpiry) {
-    return zohoAccessToken;
+async function sendEmail(mailOptions) {
+  if (!resend) {
+    console.error('❌ Resend not configured! Set RESEND_API_KEY in environment');
+    return { success: false };
   }
 
-  // Refresh token
   try {
-    const response = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {
-      params: {
-        refresh_token: process.env.ZOHO_REFRESH_TOKEN,
-        client_id: process.env.ZOHO_CLIENT_ID,
-        client_secret: process.env.ZOHO_CLIENT_SECRET,
-        grant_type: 'refresh_token'
-      }
-    });
-
-    zohoAccessToken = response.data.access_token;
-    tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000; // Refresh 1 min early
+    const fromAddress = process.env.EMAIL_FROM || 
+                       `SmartDocs365 <onboarding@resend.dev>`; // Resend verified sender
     
-    console.log('✅ Zoho API token refreshed');
-    return zohoAccessToken;
-  } catch (error) {
-    console.error('❌ Failed to refresh Zoho token:', error.message);
-    throw error;
-  }
-}
-
-// Send email via Zoho Mail API
-async function sendViaZohoAPI(mailOptions) {
-  try {
-    const accessToken = await getZohoAccessToken();
-    
-    // Get account ID (first time only)
-    if (!global.zohoAccountId) {
-      const accountsRes = await axios.get('https://mail.zoho.com/api/accounts', {
-        headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}` }
-      });
-      global.zohoAccountId = accountsRes.data.data[0].accountId;
-    }
-
-    // Prepare recipients
     const toAddresses = Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to];
     
-    // Send email
     const emailData = {
-      fromAddress: process.env.EMAIL_USER || 'Support@smartdocs365.com',
-      toAddress: toAddresses.join(','),
+      from: fromAddress,
+      to: toAddresses,
       subject: mailOptions.subject,
-      content: mailOptions.html || mailOptions.text,
-      mailFormat: 'html'
+      html: mailOptions.html || mailOptions.text,
     };
 
-    await axios.post(
-      `https://mail.zoho.com/api/accounts/${global.zohoAccountId}/messages`,
-      emailData,
-      {
-        headers: { 
-          'Authorization': `Zoho-oauthtoken ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    if (mailOptions.replyTo) {
+      emailData.reply_to = mailOptions.replyTo;
+    }
 
-    console.log('✅ Email sent via Zoho API to:', toAddresses.join(', '));
-    return { success: true };
+    const result = await resend.emails.send(emailData);
+    
+    console.log('✅ Email sent via Resend to:', toAddresses.join(', '));
+    return { success: true, result };
+    
   } catch (error) {
-    console.error('❌ Zoho API send failed:', error.response?.data || error.message);
+    console.error('❌ Resend API error:', error.message);
     return { success: false, error };
   }
 }
-
-/* ============================================================
-   FALLBACK: Gmail SMTP (if Zoho API not configured)
-   ============================================================ */
-
-const gmailTransporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER || 'smartdocs365sa@gmail.com',
-    pass: process.env.GMAIL_PASS,
-  }
-});
-
-// Smart email sender - tries Zoho API first, falls back to Gmail
-async function sendEmail(mailOptions) {
-  // Add from address
-  mailOptions.from = process.env.EMAIL_FROM || 
-                    `SmartDocs365 Support <${process.env.EMAIL_USER || 'Support@smartdocs365.com'}>`;
-
-  // Try Zoho API first (if configured)
-  if (process.env.ZOHO_REFRESH_TOKEN) {
-    const result = await sendViaZohoAPI(mailOptions);
-    if (result.success) return result;
-    
-    console.log('🔄 Zoho API failed, trying Gmail fallback...');
-  }
-
-  // Fallback to Gmail SMTP
-  try {
-    const info = await gmailTransporter.sendMail(mailOptions);
-    console.log('✅ Email sent via Gmail:', info.response);
-    return { success: true };
-  } catch (error) {
-    console.error('❌ Gmail also failed:', error.message);
-    return { success: false };
-  }
-}
-
-// Test on startup
-setTimeout(async () => {
-  if (process.env.ZOHO_REFRESH_TOKEN) {
-    try {
-      await getZohoAccessToken();
-      console.log('✅ Zoho Mail API initialized');
-    } catch (error) {
-      console.log('⚠️ Zoho API not available, will use Gmail fallback');
-    }
-  } else {
-    console.log('ℹ️ Zoho API not configured, using Gmail SMTP');
-    gmailTransporter.verify((error) => {
-      if (error) console.error('❌ Gmail connection failed:', error.message);
-      else console.log('✅ Gmail SMTP ready');
-    });
-  }
-}, 2000);
 
 /* ============================================================
    EMAIL FUNCTIONS
@@ -196,17 +111,24 @@ async function expiredPolicyMail(email, name, date, number, days) {
     const template = Handlebars.compile(templateData);
     const renderedTemplate = template({ name, number, date, days });
 
-    const recipients = [email];
-    const yourEmail = process.env.EMAIL_USER || 'Support@smartdocs365.com';
-    if (yourEmail && yourEmail !== email) {
-      recipients.push(yourEmail);
-    }
-
+    // Send to customer
+    console.log(`📧 Sending Policy Expiry to Customer: ${email}`);
     await sendEmail({
-      to: recipients,
+      to: email,
       subject: `🔔 Policy Renewal Reminder - ${number}`,
       html: renderedTemplate,
     });
+
+    // Send copy to you
+    const yourEmail = process.env.EMAIL_USER || 'Support@smartdocs365.com';
+    if (yourEmail && yourEmail !== email) {
+      console.log(`📧 Sending copy to: ${yourEmail}`);
+      await sendEmail({
+        to: yourEmail,
+        subject: `🔔 [Copy] Policy Renewal - ${number}`,
+        html: renderedTemplate,
+      });
+    }
   } catch (err) {
     console.error("❌ Template Error:", err.message);
   }
@@ -228,6 +150,8 @@ function sendOtpCode(email, otpCode) {
 
 async function sendResetEmail(email, name, resetToken) {
   try {
+    console.log(`📧 Sending reset email to: ${email}`);
+    
     if (!fs.existsSync(ResetPasswordMail)) {
       console.error("❌ Template not found");
       return false;
@@ -256,16 +180,21 @@ async function sendMailToSupportMail(payload) {
       day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: 'numeric',
     });
 
-    // Note: Attachments not supported in Zoho API, will use Gmail fallback
-    const attachments = payload.file_name ? [{ filename: payload.file_name, path: payload.file_path }] : [];
+    const supportEmail = process.env.EMAIL_USER || 'Support@smartdocs365.com';
 
     await sendEmail({
-      from: payload?.email_address, 
+      to: supportEmail,
       replyTo: payload?.email_address,
-      to: process.env.EMAIL_USER || 'Support@smartdocs365.com',
       subject: 'New User Inquiry / Support Request',
-      text: `Dear Support,\n\nDate: ${formattedDate}\nName: ${payload?.full_name}\nEmail: ${payload?.email_address}\nMobile: ${payload?.mobile}\n\nMessage:\n${payload?.description}\n`, 
-      attachments: attachments,
+      html: `
+        <h2>New Support Request</h2>
+        <p><strong>Date:</strong> ${formattedDate}</p>
+        <p><strong>Name:</strong> ${payload?.full_name}</p>
+        <p><strong>Email:</strong> ${payload?.email_address}</p>
+        <p><strong>Mobile:</strong> ${payload?.mobile}</p>
+        <h3>Message:</h3>
+        <p>${payload?.description}</p>
+      `
     });
 }
 
