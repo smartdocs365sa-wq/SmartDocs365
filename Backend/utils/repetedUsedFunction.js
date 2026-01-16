@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ FIXED: Matches GitHub filename 'ResetPasswordMail.html'
+// ✅ FIXED: Zoho Mail + Policy Expiry Emails
 // ============================================
 const nodemailer = require("nodemailer");
 const path = require("path");
@@ -9,9 +9,7 @@ const Handlebars = require('handlebars');
 const crypto = require('crypto');
 
 // HTML Template Paths
-// ✅ FIXED: Capital 'R' to match your GitHub file
 const ResetPasswordMail = path.join(__dirname, "../html/", "ResetPasswordMail.html"); 
-
 const welcomeMessageFile = path.join(__dirname, "../html/", "welcomeEmail.html");
 const sendOtpFile = path.join(__dirname, "../html/", "otpMail.html");
 const expiryMailFile = path.join(__dirname, "../html/", "expiryMail.html");
@@ -22,14 +20,28 @@ const algorithm = 'aes-256-cbc';
 const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
 
 /* ============================================================
-   ✅ EMAIL TRANSPORTER (Connected to Gmail)
+   ✅ EMAIL TRANSPORTER - ZOHO MAIL CONFIGURATION
    ============================================================ */
 const transporter = nodemailer.createTransport({
-  service: 'gmail', 
+  host: process.env.EMAIL_HOST || 'smtp.zoho.com',
+  port: parseInt(process.env.EMAIL_PORT) || 587,
+  secure: process.env.EMAIL_SECURE === 'true', // false for 587, true for 465
   auth: {
-    user: process.env.GMAIL_USER, // Uses smartdocs365sa@gmail.com
-    pass: process.env.GMAIL_PASS, // Uses the App Password (kklqwfwzdkpgffom)
+    user: process.env.EMAIL_USER || 'Support@smartdocs365.com',
+    pass: process.env.EMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false // For testing
+  }
+});
+
+// Test connection on startup
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('❌ Email Server Connection Failed:', error);
+  } else {
+    console.log('✅ Email Server Ready:', process.env.EMAIL_USER);
+  }
 });
 
 /* ============================================================
@@ -43,19 +55,20 @@ function sendWelcomeMail(email, name) {
     const renderedTemplate = template.replace("{{{ name }}}", name);
 
     const mailOptions = {
-      from: `"SmartDocs365" <${process.env.GMAIL_USER}>`,
+      from: process.env.EMAIL_FROM || `"SmartDocs365" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Welcome to SmartDocs365!",
       html: renderedTemplate,
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
-      if (error) console.error("Error sending Welcome email:", error);
-      else console.log("Welcome Email sent:", info.response);
+      if (error) console.error("❌ Error sending Welcome email:", error);
+      else console.log("✅ Welcome Email sent:", info.response);
     });
   });
 }
 
+// ✅ SUBSCRIBER Subscription Expiry (Your Subscription)
 function expiredMail(email, name, date) {
   try {
     const templateData = fs.readFileSync(expiryMailFile, 'utf8');
@@ -63,21 +76,22 @@ function expiredMail(email, name, date) {
     const renderedTemplate = template({ name, date });
 
     const mailOptions = {
-      from: `"SmartDocs365" <${process.env.GMAIL_USER}>`,
+      from: process.env.EMAIL_FROM || `"SmartDocs365" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "Action Required: Subscription Expiring Soon",
+      subject: "⚠️ Action Required: Subscription Expiring Soon",
       html: renderedTemplate,
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
-      if (error) console.error("Error sending Expiry email:", error);
-      else console.log("Expiry Email sent:", info.response);
+      if (error) console.error("❌ Error sending Subscription Expiry email:", error);
+      else console.log("✅ Subscription Expiry Email sent:", info.response);
     });
   } catch (err) {
-    console.error("Template Error (Expiry):", err.message);
+    console.error("Template Error (Subscription Expiry):", err.message);
   }
 }
 
+// ✅ CUSTOMER Policy Expiry (Their Insurance Policy)
 function expiredPolicyMail(email, name, date, number, days) {
   try {
     const templateData = fs.readFileSync(expiryPolicyMailFile, 'utf8');
@@ -85,15 +99,15 @@ function expiredPolicyMail(email, name, date, number, days) {
     const renderedTemplate = template({ name, number, date, days });
 
     const mailOptions = {
-      from: `"SmartDocs365" <${process.env.GMAIL_USER}>`,
-      to: email,
-      subject: "Policy Expiry Alert - SmartDocs365",
+      from: process.env.EMAIL_FROM || `"SmartDocs365" <${process.env.EMAIL_USER}>`,
+      to: [email, process.env.EMAIL_USER], // ✅ Send to BOTH customer AND you
+      subject: `🔔 Policy Renewal Reminder - ${number}`,
       html: renderedTemplate,
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
-      if (error) console.error("Error sending Policy Expiry email:", error);
-      else console.log("Policy Expiry Email sent:", info.response);
+      if (error) console.error("❌ Error sending Policy Expiry email:", error);
+      else console.log("✅ Policy Expiry Email sent to:", email, "and", process.env.EMAIL_USER);
     });
   } catch (err) {
     console.error("Template Error (Policy Expiry):", err.message);
@@ -107,25 +121,24 @@ function sendOtpCode(email, otpCode) {
     const renderedTemplate = template.replace("{{{ otpCode }}}", otpCode);
 
     const mailOptions = {
-      from: `"SmartDocs365 Security" <${process.env.GMAIL_USER}>`,
+      from: process.env.EMAIL_FROM || `"SmartDocs365 Security" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Your OTP Verification Code",
       html: renderedTemplate,
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
-      if (error) console.error("Error sending OTP:", error);
-      else console.log("OTP Email sent:", info.response);
+      if (error) console.error("❌ Error sending OTP:", error);
+      else console.log("✅ OTP Email sent:", info.response);
     });
   });
 }
 
-// ✅ FIXED: Async/Await logic for Password Reset
+// ✅ Password Reset Email
 async function sendResetEmail(email, name, resetToken) {
   try {
     console.log(`Attempting to send reset email to: ${email}`);
     
-    // Check if template exists
     if (!fs.existsSync(ResetPasswordMail)) {
       console.error("CRITICAL: ResetPasswordMail.html not found at", ResetPasswordMail);
       return false;
@@ -133,18 +146,15 @@ async function sendResetEmail(email, name, resetToken) {
 
     const templateData = fs.readFileSync(ResetPasswordMail, 'utf8');
     const template = Handlebars.compile(templateData);
-    
-    // Render with dynamic data
     const renderedTemplate = template({ name, resetToken, baseUrl });
 
     const mailOptions = {
-      from: `"SmartDocs365 Support" <${process.env.GMAIL_USER}>`,
+      from: process.env.EMAIL_FROM || `"SmartDocs365 Support" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Reset Your Password',
+      subject: 'Reset Your Password - SmartDocs365',
       html: renderedTemplate,
     };
 
-    // Send
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Reset Email sent successfully:', info.response);
     return true; 
@@ -166,15 +176,15 @@ async function sendMailToSupportMail(payload) {
     const mailOptions = {
       from: payload?.email_address, 
       replyTo: payload?.email_address,
-      to: process.env.GMAIL_USER, // Send to yourself (Support)
+      to: process.env.EMAIL_USER,
       subject: 'New User Inquiry / Support Request',
       text: `Dear Support,\n\nDate: ${formattedDate}\nName: ${payload?.full_name}\nEmail: ${payload?.email_address}\nMobile: ${payload?.mobile}\n\nMessage:\n${payload?.description}\n`, 
       attachments: attachments,
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
-      if (error) console.error("Error sending Support email:", error);
-      else console.log("Support Email sent:", info.response);
+      if (error) console.error("❌ Error sending Support email:", error);
+      else console.log("✅ Support Email sent:", info.response);
     });
 }
 

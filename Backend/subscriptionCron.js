@@ -1,33 +1,30 @@
 // ============================================
 // FILE: Backend/subscriptionCron.js
+// ✅ FIXED: Policy & Subscription Expiry Emails
 // ============================================
 
 const cron = require("node-cron");
-const rechargeInfoModel = require("./models/rechargeInfoModel");
 const userModel = require("./models/userModel");
 const pdfDetailsModel = require("./models/pdfDetailsModel");
-const subcriptionTypesModel = require("./models/subcriptionTypesModel");
 const userSubcriptionInfoModel = require("./models/userSubcriptionInfoModel");
-const { expiredMail, policyExpiryMail } = require("./utils/repetedUsedFunction"); 
-// ⚠️ IMPORTANT: You must create 'policyExpiryMail' in your utils folder!
+const { expiredMail, expiredPolicyMail } = require("./utils/repetedUsedFunction");
 
 // Run every day at 9 AM
 cron.schedule("0 9 * * *", async () => {
   console.log("🔔 Running daily expiry checks...");
-  await checkSubscriptionExpiry(); // 1. For You (Profile)
-  await checkPolicyExpiry();       // 2. For Customers (Policy Holders)
+  await checkSubscriptionExpiry(); 
+  await checkPolicyExpiry();       
 });
 
 // ====================================================
-// 1. Check SUBSCRIPTION Expiry (Send to YOU)
+// 1. Check SUBSCRIPTION Expiry (Send to Subscriber)
 // ====================================================
 async function checkSubscriptionExpiry() {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Check Active Subscriptions
-    const activeSubs = await userSubcriptionInfoModel.find({ plan_active: true });
+    const activeSubs = await userSubcriptionInfoModel.find({ is_active: true });
 
     for (const sub of activeSubs) {
       if(!sub.expiry_date) continue;
@@ -38,13 +35,13 @@ async function checkSubscriptionExpiry() {
       const diffTime = expiryDate - today;
       const daysUntilExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      // Alert at 7 days, 3 days, and 0 days (Expired)
-      if ([7, 3, 0].includes(daysUntilExpiry)) {
+      // ✅ Alert at 15, 7, 3, and 0 days (Expired)
+      if ([15, 7, 3, 0].includes(daysUntilExpiry)) {
         const user = await userModel.findOne({ user_id: sub.user_id });
         if (!user) continue;
 
         const msgType = daysUntilExpiry === 0 ? "Expired" : "Expiring Soon";
-        console.log(`📧 Sending Subscription ${msgType} Mail to Profile: ${user.email_address}`);
+        console.log(`📧 Sending Subscription ${msgType} Mail to: ${user.email_address}`);
 
         await expiredMail(
             user.email_address,
@@ -57,7 +54,7 @@ async function checkSubscriptionExpiry() {
       if(daysUntilExpiry < 0) {
            await userSubcriptionInfoModel.updateOne(
                { _id: sub._id }, 
-               { plan_active: false, plan_name: "Expired" }
+               { is_active: false }
            );
            console.log(`❌ Deactivated Subscription for User: ${sub.user_id}`);
       }
@@ -68,7 +65,7 @@ async function checkSubscriptionExpiry() {
 }
 
 // ====================================================
-// 2. Check POLICY Expiry (Send to CUSTOMER)
+// 2. Check POLICY Expiry (Send to Customer + You)
 // ====================================================
 async function checkPolicyExpiry() {
     try {
@@ -82,7 +79,6 @@ async function checkPolicyExpiry() {
         });
 
         for (const policy of activePolicies) {
-            // Parse date string (DD/MM/YYYY or YYYY-MM-DD)
             const expiryStr = policy.file_details.Policy_expiry_date;
             if(!expiryStr) continue;
 
@@ -93,28 +89,24 @@ async function checkPolicyExpiry() {
             const diffTime = expiryDate - today;
             const daysUntilExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Alert at 15 days and 7 days
-            if ([15, 7].includes(daysUntilExpiry)) {
+            // ✅ Alert at 30, 15, 7, 3, and 0 days before expiry
+            if ([30, 15, 7, 3, 0].includes(daysUntilExpiry)) {
                 
                 const policyHolderEmail = policy.file_details.Policyholder_emailid;
                 const policyHolderName = policy.file_details.Policyholder_name || "Valued Customer";
                 const policyNumber = policy.file_details.Insurance_policy_number || "Unknown";
 
-                // VALIDATE EMAIL: Only send if it looks real
+                // ✅ VALIDATE EMAIL: Only send if valid
                 if(policyHolderEmail && policyHolderEmail !== "NA" && policyHolderEmail.includes("@")) {
-                    console.log(`📧 Sending POLICY Expiry Mail to Customer: ${policyHolderEmail} (Days: ${daysUntilExpiry})`);
+                    console.log(`📧 Sending POLICY Expiry Mail to: ${policyHolderEmail} (Days: ${daysUntilExpiry})`);
                     
-                    // You must define this function in utils/repetedUsedFunction.js
-                    if (typeof policyExpiryMail === 'function') {
-                        await policyExpiryMail(
-                            policyHolderEmail, 
-                            policyHolderName, 
-                            formatDate(expiryDate),
-                            policyNumber
-                        ); 
-                    } else {
-                        console.log("⚠️ policyExpiryMail function not found in utils!");
-                    }
+                    await expiredPolicyMail(
+                        policyHolderEmail, 
+                        policyHolderName, 
+                        formatDate(expiryDate),
+                        policyNumber,
+                        daysUntilExpiry
+                    );
                 }
             }
         }
@@ -140,7 +132,9 @@ function parseDateString(dateStr) {
     } catch(e) { return null; }
 }
 
-module.exports = { checkExpiringSubscriptions: async () => { 
-    await checkSubscriptionExpiry(); 
-    await checkPolicyExpiry(); 
-}};
+module.exports = { 
+    checkExpiringSubscriptions: async () => { 
+        await checkSubscriptionExpiry(); 
+        await checkPolicyExpiry(); 
+    }
+};
