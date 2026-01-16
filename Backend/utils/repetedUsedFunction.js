@@ -37,7 +37,42 @@ const baseUrl = "https://smartdocs365-backend.onrender.com/api/";
    EMAIL SENDING FUNCTION
    ============================================================ */
 
+// Rate limiting queue
+let emailQueue = [];
+let isProcessing = false;
+
+async function processEmailQueue() {
+  if (isProcessing || emailQueue.length === 0) return;
+  
+  isProcessing = true;
+  
+  while (emailQueue.length > 0) {
+    const { mailOptions, resolve } = emailQueue.shift();
+    
+    try {
+      const result = await sendEmailNow(mailOptions);
+      resolve(result);
+      
+      // Wait 600ms between emails (max 2 per second)
+      if (emailQueue.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+    } catch (error) {
+      resolve({ success: false, error });
+    }
+  }
+  
+  isProcessing = false;
+}
+
 async function sendEmail(mailOptions) {
+  return new Promise((resolve) => {
+    emailQueue.push({ mailOptions, resolve });
+    processEmailQueue();
+  });
+}
+
+async function sendEmailNow(mailOptions) {
   if (!resend) {
     console.error('❌ Resend not configured! Set RESEND_API_KEY in environment');
     return { success: false };
@@ -45,7 +80,7 @@ async function sendEmail(mailOptions) {
 
   try {
     const fromAddress = process.env.EMAIL_FROM || 
-                       `SmartDocs365 <onboarding@resend.dev>`; // Resend verified sender
+                       `SmartDocs365 <onboarding@resend.dev>`;
     
     const toAddresses = Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to];
     

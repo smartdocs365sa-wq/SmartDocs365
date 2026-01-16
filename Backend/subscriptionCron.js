@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/subscriptionCron.js
-// ✅ FIXED: Policy & Subscription Expiry Emails
+// ✅ FINAL: Policy & Subscription Expiry with Rate Limiting
 // ============================================
 
 const cron = require("node-cron");
@@ -48,6 +48,9 @@ async function checkSubscriptionExpiry() {
             user.first_name,
             formatDate(expiryDate)
         );
+        
+        // ✅ Wait 2 seconds before next subscription email
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
       // Deactivate if expired
@@ -59,6 +62,8 @@ async function checkSubscriptionExpiry() {
            console.log(`❌ Deactivated Subscription for User: ${sub.user_id}`);
       }
     }
+    
+    console.log('✅ Subscription expiry check completed');
   } catch (error) {
     console.error("❌ Error in Subscription Check:", error);
   }
@@ -77,6 +82,10 @@ async function checkPolicyExpiry() {
             is_active: true,
             "file_details.Policy_expiry_date": { $exists: true, $ne: "NA" }
         });
+
+        console.log(`📋 Found ${activePolicies.length} active policies to check`);
+
+        let emailsSent = 0;
 
         for (const policy of activePolicies) {
             const expiryStr = policy.file_details.Policy_expiry_date;
@@ -100,41 +109,97 @@ async function checkPolicyExpiry() {
                 if(policyHolderEmail && policyHolderEmail !== "NA" && policyHolderEmail.includes("@")) {
                     console.log(`📧 Sending POLICY Expiry Mail to: ${policyHolderEmail} (Days: ${daysUntilExpiry})`);
                     
-                    await expiredPolicyMail(
-                        policyHolderEmail, 
-                        policyHolderName, 
-                        formatDate(expiryDate),
-                        policyNumber,
-                        daysUntilExpiry
-                    );
+                    try {
+                        await expiredPolicyMail(
+                            policyHolderEmail, 
+                            policyHolderName, 
+                            formatDate(expiryDate),
+                            policyNumber,
+                            daysUntilExpiry
+                        );
+                        
+                        emailsSent++;
+                        
+                        // ✅ Wait 2 seconds between each policy to avoid rate limits
+                        // This ensures we stay under 2 emails per second
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        
+                    } catch (emailError) {
+                        console.error(`❌ Failed to send email for policy ${policyNumber}:`, emailError.message);
+                        // Continue with next policy even if this one fails
+                    }
+                } else {
+                    console.log(`⚠️ Skipping policy ${policyNumber} - invalid email: ${policyHolderEmail}`);
                 }
             }
         }
+        
+        console.log(`✅ Policy expiry check completed - ${emailsSent} emails sent`);
+        
     } catch (error) {
         console.error("❌ Error in Policy Expiry Check:", error);
     }
 }
 
-// Helper: Format Date for Email
+// ====================================================
+// HELPER FUNCTIONS
+// ====================================================
+
+// Format Date for Email (DD/MM/YYYY)
 function formatDate(date) {
     return date.toLocaleDateString('en-GB'); // DD/MM/YYYY
 }
 
-// Helper: Parse various date strings
+// Parse various date string formats
 function parseDateString(dateStr) {
     try {
         if(dateStr.includes('/')) {
             const parts = dateStr.split('/');
-            // Assumes DD/MM/YYYY
-            return new Date(parts[2], parts[1]-1, parts[0]);
+            
+            // Handle both DD/MM/YYYY and MM/DD/YYYY
+            if(parts.length === 3) {
+                // Assumes DD/MM/YYYY (common for policy dates)
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+                const year = parseInt(parts[2], 10);
+                
+                // Validate date components
+                if(day > 0 && day <= 31 && month >= 0 && month <= 11 && year > 2000) {
+                    return new Date(year, month, day);
+                }
+            }
         }
-        return new Date(dateStr);
-    } catch(e) { return null; }
+        
+        // Try parsing as ISO date string (YYYY-MM-DD)
+        const isoDate = new Date(dateStr);
+        if(!isNaN(isoDate.getTime())) {
+            return isoDate;
+        }
+        
+        return null;
+    } catch(e) { 
+        console.error(`❌ Error parsing date: ${dateStr}`, e.message);
+        return null; 
+    }
 }
 
+// ====================================================
+// MANUAL TRIGGER (for testing)
+// ====================================================
+async function runManualCheck() {
+    console.log("🧪 Running manual expiry check...");
+    await checkSubscriptionExpiry(); 
+    await checkPolicyExpiry();
+    console.log("✅ Manual check completed");
+}
+
+// Export functions
 module.exports = { 
     checkExpiringSubscriptions: async () => { 
         await checkSubscriptionExpiry(); 
         await checkPolicyExpiry(); 
-    }
+    },
+    runManualCheck, // For testing
+    checkSubscriptionExpiry,
+    checkPolicyExpiry
 };
