@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ BEST FIX: Zoho Multi-Server with Auto-Retry
+// ✅ FINAL: Gmail SMTP with Zoho "From" Address
 // ============================================
 const nodemailer = require("nodemailer");
 const path = require("path");
@@ -20,220 +20,127 @@ const algorithm = 'aes-256-cbc';
 const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
 
 /* ============================================================
-   ✅ ZOHO MULTI-SERVER CONFIGURATION
+   ✅ GMAIL SMTP CONFIGURATION (Works on Render)
    ============================================================ */
 
-// Multiple Zoho SMTP configurations to try
-const zohoConfigs = [
-  {
-    name: 'Zoho India Primary',
-    host: 'smtp.zoho.in',
-    port: 587,
-    secure: false
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER || 'smartdocs365sa@gmail.com',
+    pass: process.env.GMAIL_PASS,
   },
-  {
-    name: 'Zoho India SSL',
-    host: 'smtp.zoho.in',
-    port: 465,
-    secure: true
-  },
-  {
-    name: 'Zoho Global TLS',
-    host: 'smtp.zoho.com',
-    port: 587,
-    secure: false
-  },
-  {
-    name: 'Zoho Global SSL',
-    host: 'smtp.zoho.com',
-    port: 465,
-    secure: true
-  },
-  {
-    name: 'Zoho Alternate Port',
-    host: 'smtp.zoho.com',
-    port: 25,
-    secure: false
+  tls: {
+    rejectUnauthorized: false
   }
-];
+});
 
-// Create transporter with current config
-let currentConfigIndex = 0;
-let transporter;
-
-function createTransporter(configIndex = 0) {
-  const config = zohoConfigs[configIndex];
-  
-  return nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure: config.secure,
-    auth: {
-      user: process.env.EMAIL_USER || 'Support@smartdocs365.com',
-      pass: process.env.EMAIL_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2',
-      ciphers: 'SSLv3'
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    logger: false, // Disable verbose logging
-    debug: false
-  });
-}
-
-// Initialize with first config
-transporter = createTransporter(0);
-
-// Test all configurations on startup
-async function testAllConfigs() {
-  console.log('🔍 Testing Zoho SMTP configurations...');
-  
-  for (let i = 0; i < zohoConfigs.length; i++) {
-    const config = zohoConfigs[i];
-    const testTransporter = createTransporter(i);
-    
-    try {
-      await testTransporter.verify();
-      console.log(`✅ ${config.name} (${config.host}:${config.port}) - WORKING!`);
-      currentConfigIndex = i;
-      transporter = testTransporter;
-      return true;
-    } catch (error) {
-      console.log(`❌ ${config.name} - Failed: ${error.message}`);
-    }
+// Test connection on startup
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('❌ Email Server Connection Failed:', error.message);
+  } else {
+    console.log('✅ Email Server Ready (Gmail):', process.env.GMAIL_USER);
   }
-  
-  console.error('⚠️ All Zoho SMTP configs failed. Emails may not work.');
-  return false;
-}
-
-// Run test after 2 seconds
-setTimeout(() => {
-  testAllConfigs().then(success => {
-    if (success) {
-      console.log(`📧 Using: ${zohoConfigs[currentConfigIndex].name}`);
-    }
-  });
-}, 2000);
-
-/* ============================================================
-   SMART EMAIL SENDER WITH AUTO-RETRY
-   ============================================================ */
-
-async function sendEmailWithRetry(mailOptions, maxRetries = 3) {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      // Add from address
-      mailOptions.from = process.env.EMAIL_FROM || 
-                        `SmartDocs365 Support <${process.env.EMAIL_USER || 'Support@smartdocs365.com'}>`;
-      
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`✅ Email sent via ${zohoConfigs[currentConfigIndex].name}:`, info.messageId);
-      return { success: true, info };
-      
-    } catch (error) {
-      console.error(`❌ Attempt ${attempt + 1} failed:`, error.message);
-      
-      // Try next config on failure
-      if (attempt < maxRetries - 1) {
-        currentConfigIndex = (currentConfigIndex + 1) % zohoConfigs.length;
-        transporter = createTransporter(currentConfigIndex);
-        console.log(`🔄 Retrying with ${zohoConfigs[currentConfigIndex].name}...`);
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s
-      }
-    }
-  }
-  
-  console.error('❌ All email attempts failed');
-  return { success: false };
-}
+});
 
 /* ============================================================
    EMAIL FUNCTIONS
    ============================================================ */
 
+// Get "From" address (can use Zoho email even with Gmail SMTP)
+function getFromAddress() {
+  return process.env.EMAIL_FROM || `"SmartDocs365" <${process.env.GMAIL_USER}>`;
+}
+
 function sendWelcomeMail(email, name) {
-  fs.readFile(welcomeMessageFile, "utf8", async (err, template) => {
+  fs.readFile(welcomeMessageFile, "utf8", (err, template) => {
     if (err) return console.error("❌ Missing Template:", err);
 
     const renderedTemplate = template.replace("{{{ name }}}", name);
 
     const mailOptions = {
+      from: getFromAddress(),
       to: email,
       subject: "Welcome to SmartDocs365!",
       html: renderedTemplate,
     };
 
-    await sendEmailWithRetry(mailOptions);
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("❌ Error sending Welcome email:", error.message);
+      else console.log("✅ Welcome Email sent:", info.response);
+    });
   });
 }
 
 // ✅ SUBSCRIBER Subscription Expiry
-async function expiredMail(email, name, date) {
+function expiredMail(email, name, date) {
   try {
     const templateData = fs.readFileSync(expiryMailFile, 'utf8');
     const template = Handlebars.compile(templateData);
     const renderedTemplate = template({ name, date });
 
     const mailOptions = {
+      from: getFromAddress(),
       to: email,
       subject: "⚠️ Action Required: Subscription Expiring Soon",
       html: renderedTemplate,
     };
 
-    await sendEmailWithRetry(mailOptions);
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("❌ Error sending Subscription Expiry email:", error.message);
+      else console.log("✅ Subscription Expiry Email sent:", info.response);
+    });
   } catch (err) {
     console.error("❌ Template Error (Subscription Expiry):", err.message);
   }
 }
 
 // ✅ CUSTOMER Policy Expiry (Send to customer + you)
-async function expiredPolicyMail(email, name, date, number, days) {
+function expiredPolicyMail(email, name, date, number, days) {
   try {
     const templateData = fs.readFileSync(expiryPolicyMailFile, 'utf8');
     const template = Handlebars.compile(templateData);
     const renderedTemplate = template({ name, number, date, days });
 
-    // Send to customer
-    console.log(`📧 Sending Policy Expiry to Customer: ${email}`);
-    await sendEmailWithRetry({
-      to: email,
+    const recipients = [email];
+    const yourEmail = process.env.EMAIL_USER || 'Support@smartdocs365.com';
+    if (yourEmail && yourEmail !== email) {
+      recipients.push(yourEmail);
+    }
+
+    const mailOptions = {
+      from: getFromAddress(),
+      to: recipients,
       subject: `🔔 Policy Renewal Reminder - ${number}`,
       html: renderedTemplate,
-    });
+    };
 
-    // Send copy to you (Support)
-    const yourEmail = process.env.EMAIL_USER || 'Support@smartdocs365.com';
-    if (yourEmail !== email) {
-      console.log(`📧 Sending Policy Expiry copy to: ${yourEmail}`);
-      await sendEmailWithRetry({
-        to: yourEmail,
-        subject: `🔔 [Copy] Policy Renewal Reminder - ${number}`,
-        html: renderedTemplate,
-      });
-    }
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("❌ Error sending Policy Expiry email:", error.message);
+      else console.log("✅ Policy Expiry Email sent to:", recipients.join(', '));
+    });
   } catch (err) {
     console.error("❌ Template Error (Policy Expiry):", err.message);
   }
 }
 
 function sendOtpCode(email, otpCode) {
-  fs.readFile(sendOtpFile, "utf8", async (err, template) => {
+  fs.readFile(sendOtpFile, "utf8", (err, template) => {
     if (err) return console.error("❌ Missing OTP Template:", err);
 
     const renderedTemplate = template.replace("{{{ otpCode }}}", otpCode);
 
     const mailOptions = {
+      from: getFromAddress(),
       to: email,
       subject: "Your OTP Verification Code",
       html: renderedTemplate,
     };
 
-    await sendEmailWithRetry(mailOptions);
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("❌ Error sending OTP:", error.message);
+      else console.log("✅ OTP Email sent:", info.response);
+    });
   });
 }
 
@@ -252,15 +159,17 @@ async function sendResetEmail(email, name, resetToken) {
     const renderedTemplate = template({ name, resetToken, baseUrl });
 
     const mailOptions = {
+      from: getFromAddress(),
       to: email,
       subject: 'Reset Your Password - SmartDocs365',
       html: renderedTemplate,
     };
 
-    const result = await sendEmailWithRetry(mailOptions);
-    return result.success;
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Reset Email sent successfully:', info.response);
+    return true;
   } catch (error) {
-    console.error('❌ Failed to send reset email:', error);
+    console.error('❌ Failed to send reset email:', error.message);
     return false;
   }
 }
@@ -276,13 +185,16 @@ async function sendMailToSupportMail(payload) {
     const mailOptions = {
       from: payload?.email_address, 
       replyTo: payload?.email_address,
-      to: process.env.EMAIL_USER || 'Support@smartdocs365.com',
+      to: process.env.GMAIL_USER || 'smartdocs365sa@gmail.com',
       subject: 'New User Inquiry / Support Request',
       text: `Dear Support,\n\nDate: ${formattedDate}\nName: ${payload?.full_name}\nEmail: ${payload?.email_address}\nMobile: ${payload?.mobile}\n\nMessage:\n${payload?.description}\n`, 
       attachments: attachments,
     };
 
-    await sendEmailWithRetry(mailOptions);
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) console.error("❌ Error sending Support email:", error.message);
+      else console.log("✅ Support Email sent:", info.response);
+    });
 }
 
 /* ============================================================
