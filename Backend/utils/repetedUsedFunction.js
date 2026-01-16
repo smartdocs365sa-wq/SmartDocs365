@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ FIXED: Multiple SMTP Fallback + Better Error Handling
+// ✅ FIXED: Multiple SMTP Fallback + Smart Port Handling
 // ============================================
 const nodemailer = require("nodemailer");
 const path = require("path");
@@ -28,10 +28,13 @@ let transportConfig;
 
 if (process.env.EMAIL_HOST === 'smtp.zoho.com' || process.env.EMAIL_HOST === 'smtp.zoho.in') {
   // Zoho Configuration
+  // LOGIC: If port is 465, secure=true. If port is 587, secure=false.
+  const isSecure = process.env.EMAIL_PORT === '465';
+  
   transportConfig = {
     host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT) || 465,
-    secure: process.env.EMAIL_PORT === '465', // true for 465, false for 587
+    port: parseInt(process.env.EMAIL_PORT) || 587, // Default to 587 if missing
+    secure: isSecure, 
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -63,7 +66,7 @@ const transporter = nodemailer.createTransport(transportConfig);
 const testConnection = async () => {
   try {
     await transporter.verify();
-    console.log('✅ Email Server Ready:', transportConfig.auth?.user || transportConfig.service);
+    console.log(`✅ Email Server Ready: ${transportConfig.auth?.user || transportConfig.service} (Port: ${transportConfig.port || 'default'})`);
   } catch (error) {
     console.error('❌ Email Server Connection Failed:', error.message);
     console.log('⚠️ Emails will fail until SMTP is configured correctly');
