@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ FIXED: Universal Configuration (Obey Env Vars)
+// ✅ FIXED: Force Port 587 for Gmail (Universal Config)
 // ============================================
 const nodemailer = require("nodemailer");
 const path = require("path");
@@ -20,18 +20,17 @@ const algorithm = 'aes-256-cbc';
 const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
 
 /* ============================================================
-   ✅ EMAIL TRANSPORTER - UNIVERSAL CONFIGURATION
+   ✅ EMAIL CONFIGURATION (NO PRESETS)
    ============================================================ */
 
 console.log(`🔵 Initializing Mail Transporter...`);
 console.log(`   Host: ${process.env.EMAIL_HOST}`);
 console.log(`   Port: ${process.env.EMAIL_PORT}`);
-console.log(`   User: ${process.env.EMAIL_USER}`);
 
 const transportConfig = {
-    host: process.env.EMAIL_HOST, // Uses smtp.gmail.com or smtp.zoho.com
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_SECURE === 'true', // Must match string 'true'
+    host: process.env.EMAIL_HOST, // Will be smtp.gmail.com
+    port: parseInt(process.env.EMAIL_PORT) || 587, // Will be 587
+    secure: process.env.EMAIL_SECURE === 'true', // Will be false
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -39,7 +38,7 @@ const transportConfig = {
     tls: {
       rejectUnauthorized: false
     },
-    // High timeout settings to prevent "Connection timeout"
+    // Increased timeouts
     connectionTimeout: 60000, 
     greetingTimeout: 60000,
     socketTimeout: 60000
@@ -81,8 +80,6 @@ async function sendEmailWithRetry(mailOptions, maxRetries = 3) {
   }
   return { success: false };
 }
-
-// --- Rest of the functions (No changes needed below) ---
 
 function sendWelcomeMail(email, name) {
   fs.readFile(welcomeMessageFile, "utf8", async (err, template) => {
