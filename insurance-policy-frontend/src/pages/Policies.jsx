@@ -425,14 +425,34 @@ const Policies = () => {
   };
 
   // --- Action Handlers ---
-  const handleSkipPolicy = () => {
+  // ✅ FIXED: Delete the policy from the backend if skipped
+  const handleSkipPolicy = async () => {
+    // 1. Get current policy data
+    const policyToSkip = extractedPolicies[currentPolicyIndex];
+
+    // 2. If it's a PDF upload (has a document_id), we must DELETE it from the DB
+    if (policyToSkip && policyToSkip.document_id) {
+        try {
+            // Optional: Show a small loading or console log
+            console.log("Deleting skipped policy...", policyToSkip.document_id);
+            await policyService.deletePolicy(policyToSkip.document_id);
+        } catch (error) {
+            console.error("Failed to delete skipped policy:", error);
+            alert("⚠️ Warning: Could not delete the skipped file from the server.");
+        }
+    }
+
+    // 3. Move to next item or close modal
     if (currentPolicyIndex < extractedPolicies.length - 1) {
       setCurrentPolicyIndex(currentPolicyIndex + 1);
     } else {
       setShowExtractedDataModal(false);
       setExtractedPolicies([]);
       setCurrentPolicyIndex(0);
-      fetchPoliciesAndStats();
+      
+      // 4. Refresh the main list to show it's gone
+      await fetchPoliciesAndStats();
+      await refreshUser();
     }
   };
 
@@ -1081,7 +1101,13 @@ const Policies = () => {
               >
                 ← Previous
               </button>
-              
+              <button
+                className="btn btn-secondary"
+                onClick={handleSkipPolicy}
+                disabled={saving}
+              >
+                Skip →
+              </button>
               <button
                 className="btn btn-primary"
                 onClick={handleSaveExtractedData}
