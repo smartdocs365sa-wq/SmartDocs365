@@ -1,27 +1,34 @@
-# Use the official Node.js image (Linux)
+# Use Node.js 18 on Debian (Linux)
 FROM node:18-slim
 
-# 1. Install Tesseract OCR and required system libraries
-# (This fixes the "tesseract not installed" error)
+# 1. Install System Dependencies (Tesseract OCR & Python)
+# We need python3 and pip because your app uses a Python script for extraction
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
+    python3 \
+    python3-pip \
     ghostscript \
     graphicsmagick \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Set the working directory inside the server
+# 2. Set working directory
 WORKDIR /app
 
-# 3. Copy package files and install dependencies
+# 3. Install Python Dependencies (for extract_policy.py)
+COPY requirements.txt ./
+# Use --break-system-packages to allow installing globally in the container
+RUN pip3 install --no-cache-dir -r requirements.txt --break-system-packages
+
+# 4. Install Node Dependencies
 COPY package*.json ./
 RUN npm install
 
-# 4. Copy the rest of the Backend code
+# 5. Copy the rest of the application code
 COPY . .
 
-# 5. Expose the port (Render uses 10000)
+# 6. Expose the port (Render uses 10000 by default, or your PORT env var)
 EXPOSE 10000
 
-# 6. Start the server
+# 7. Start the application
 CMD ["node", "app.js"]
