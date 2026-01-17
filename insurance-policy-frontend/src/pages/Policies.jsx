@@ -1081,13 +1081,7 @@ const Policies = () => {
               >
                 ← Previous
               </button>
-              <button
-                className="btn btn-secondary"
-                onClick={handleSkipPolicy}
-                disabled={saving}
-              >
-                Skip →
-              </button>
+              
               <button
                 className="btn btn-primary"
                 onClick={handleSaveExtractedData}
