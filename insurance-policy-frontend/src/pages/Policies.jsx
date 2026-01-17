@@ -46,6 +46,7 @@ const Policies = () => {
   const [uploading, setUploading] = useState(false);
   const [excelImporting, setExcelImporting] = useState(false);
   const fileInputRef = useRef(null); 
+  const savedCountRef = useRef(0);
    
   // --- Extraction States ---
   const [showExtractedDataModal, setShowExtractedDataModal] = useState(false);
@@ -315,6 +316,7 @@ const Policies = () => {
 
         setExtractedPolicies(mappedPolicies);
         setCurrentPolicyIndex(0);
+        savedCountRef.current = 0;
         setShowExtractedDataModal(true);
 
       } catch (error) {
@@ -351,6 +353,7 @@ const Policies = () => {
         if (extractedData.length > 0) {
           setExtractedPolicies(extractedData);
           setCurrentPolicyIndex(0);
+          savedCountRef.current = 0;
           setShowExtractedDataModal(true);
         } else {
           alert('✅ Files uploaded but no data extracted!');
@@ -381,6 +384,7 @@ const Policies = () => {
   };
 
   // --- Save Handler (Extraction) ---
+  // ✅ REPLACE YOUR ENTIRE handleSaveExtractedData FUNCTION WITH THIS:
   const handleSaveExtractedData = async () => {
     const currentPolicy = extractedPolicies[currentPolicyIndex];
     if (!currentPolicy) return;
@@ -406,15 +410,30 @@ const Policies = () => {
         }
       }
 
+      // ✅ 1. Increment Success Counter
+      savedCountRef.current += 1;
+
       if (currentPolicyIndex < extractedPolicies.length - 1) {
         setCurrentPolicyIndex(currentPolicyIndex + 1);
       } else {
-        await fetchPoliciesAndStats(); // Refresh stats after saving
+        await fetchPoliciesAndStats(); 
         await refreshUser();
         setShowExtractedDataModal(false);
         setExtractedPolicies([]);
         setCurrentPolicyIndex(0);
-        alert(`✅ All ${extractedPolicies.length} policies saved successfully!`);
+
+        // ✅ 2. Calculate Saved vs Skipped
+        const total = extractedPolicies.length;
+        const saved = savedCountRef.current;
+        const skipped = total - saved;
+
+        // ✅ 3. Show Dynamic Alert
+        if (skipped === 0) {
+             alert(`✅ All ${saved} policies saved successfully!`);
+        } else {
+             alert(`✅ Process Complete!\n\n📂 Saved: ${saved}\n⏭️ Skipped: ${skipped}`);
+        }
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
