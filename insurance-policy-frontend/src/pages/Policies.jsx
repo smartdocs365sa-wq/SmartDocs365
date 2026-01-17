@@ -1,6 +1,6 @@
 // ============================================
 // FILE: insurance-policy-frontend/src/pages/Policies.jsx
-// UPDATED: Fixed Eye Icon Logic, Full File Names, Excel/PDF Badges
+// UPDATED: Added Date Validation, Exact Currency, and Double-Click Fix
 // ============================================
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -70,6 +70,47 @@ const Policies = () => {
   const [showUploadLimitModal, setShowUploadLimitModal] = useState(false);
   const [uploadLimitInfo, setUploadLimitInfo] = useState({ message: '', currentCount: 0, limitCount: 0 });
 
+  // ============================================
+  // ✅ NEW HELPER FUNCTIONS (Date & Currency)
+  // ============================================
+
+  // 1. Strict Date Validator (DD/MM/YYYY)
+  const isValidDateFormat = (dateString) => {
+    if (!dateString || dateString === 'NA' || dateString === '') return true; 
+    const regex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/;
+    
+    if (!regex.test(dateString)) return false;
+
+    const [, day, month, year] = dateString.match(regex);
+    const d = parseInt(day, 10);
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+    if (y < 1900 || y > 2100) return false;
+
+    const daysInMonth = new Date(y, m, 0).getDate();
+    return d <= daysInMonth;
+  };
+
+  // 2. Exact Currency Formatter (Float Precision)
+  const formatCurrencyExact = (value) => {
+    if (!value || value === 'NA' || value === null) return 'N/A';
+    // Remove non-numeric characters except dot
+    const cleanStr = String(value).replace(/[^0-9.]/g, '');
+    const num = parseFloat(cleanStr);
+    
+    if (isNaN(num)) return value;
+
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
+  };
+
   useEffect(() => {
     fetchPoliciesAndStats();
   }, []);
@@ -83,7 +124,6 @@ const Policies = () => {
         api.get('/user/dashboard-stats')
       ]);
   
-      // ✅ Declare variables FIRST
       let pdfUsed = 0;
       let limit = 0;
       let planName = 'Free Plan';
@@ -93,18 +133,17 @@ const Policies = () => {
         setPolicies(allPolicies);
         setSelectedPolicyIds([]); 
   
-        // ✅ Get counter from backend (NOT from counting files!)
         if (statsRes.data && statsRes.data.success) {
-          pdfUsed = statsRes.data.data.uploadsUsed || 0; // ✅ THIS SHOULD BE 0
-          limit = statsRes.data.data.uploadsLimit || 0;   // ✅ THIS SHOULD BE 10
+          pdfUsed = statsRes.data.data.uploadsUsed || 0;
+          limit = statsRes.data.data.uploadsLimit || 0;
           planName = statsRes.data.data.planName || 'Free Plan';
         }
   
         const isLimitReached = limit > 0 && pdfUsed >= limit;
   
         setUsageStats({
-          pdfUsed,    // ✅ Should be 0, not 13
-          limit,      // ✅ Should be 10
+          pdfUsed,
+          limit,
           isLimitReached,
           planName
         });
@@ -214,7 +253,8 @@ const Policies = () => {
       const row = {};
       POLICY_FIELDS.forEach(field => {
         let value = details[field.key];
-        if (field.key.includes('premium')) value = formatCurrency(value);
+        // Use exact formatter for excel text
+        if (field.key.includes('premium')) value = formatCurrencyExact(value);
         else if (field.key.includes('date')) value = formatDate(value);
         row[field.label] = value || 'N/A';
       });
@@ -322,7 +362,6 @@ const Policies = () => {
         alert('❌ Upload failed: ' + (response.message || 'Unknown error'));
       }
     } catch (error) {
-      // Handle explicit 403 from backend (Double protection)
       if (error.response && error.response.status === 403) {
         const errorData = error.response.data || {};
         setUploadLimitInfo({ 
@@ -341,10 +380,14 @@ const Policies = () => {
     }
   };
 
-  // --- Save Handler ---
+  // --- Save Handler (Extraction) ---
   const handleSaveExtractedData = async () => {
     const currentPolicy = extractedPolicies[currentPolicyIndex];
     if (!currentPolicy) return;
+    
+    // Check if saving is already in progress
+    if (saving) return;
+
     setSaving(true);
     
     try {
@@ -355,7 +398,6 @@ const Policies = () => {
           file_details: currentPolicy.file_details
         });
       } else {
-        // Create new (Excel import)
         if (policyService.createPolicy) {
           await policyService.createPolicy({
             file_name: currentPolicy.file_name,
@@ -406,6 +448,7 @@ const Policies = () => {
     setExtractedPolicies(updatedPolicies);
   };
 
+  // ✅ UPDATED: PDF Download to use Exact Currency
   const handleDownloadPDF = (policy) => {
     const doc = new jsPDF();
     const details = policy.file_details || {};
@@ -420,8 +463,11 @@ const Policies = () => {
     yPos += 3; doc.line(14, yPos, 196, yPos); yPos += 8;
     POLICY_FIELDS.forEach(field => {
       let value = details[field.key] || 'N/A';
-      if (field.key.includes('premium')) value = formatCurrency(value);
+      
+      // ✅ USE NEW FORMATTER
+      if (field.key.includes('premium')) value = formatCurrencyExact(value);
       else if (field.key.includes('date')) value = formatDate(value);
+      
       addText(`${field.label}:`, 14, 10, true); yPos -= lineHeight;
       const lines = doc.splitTextToSize(String(value), 130);
       doc.setFont(undefined, 'normal');
@@ -434,7 +480,7 @@ const Policies = () => {
     const details = policy.file_details || {};
     const excelData = POLICY_FIELDS.map(field => {
       let value = details[field.key] || 'N/A';
-      if (field.key.includes('premium')) value = formatCurrency(value);
+      if (field.key.includes('premium')) value = formatCurrencyExact(value);
       else if (field.key.includes('date')) value = formatDate(value);
       return { 'Field': field.label, 'Value': value };
     });
@@ -456,10 +502,21 @@ const Policies = () => {
   };
 
   const handleShareViaWhatsApp = () => {
-    const details = sharingPolicy.file_details || {};
-    const cleanPhone = (details.Policyholder_phone_number || '').replace(/\D/g, '');
-    const message = encodeURIComponent(`*Policy Details*\nNo: ${details.Insurance_policy_number}\nExpiry: ${formatDate(details.Policy_expiry_date)}`);
-    window.open(`https://wa.me/${cleanPhone}?text=${message}`);
+    const d = sharingPolicy.file_details || {};
+    const cleanPhone = (d.Policyholder_phone_number || '').replace(/\D/g, '');
+    
+    // Variables
+    const name = d.Policyholder_name || 'Customer';
+    const type = d.Insurance_plan_name || 'Insurance'; // Uses Plan Name (e.g. "Private Car Policy")
+    const number = d.Insurance_policy_number || 'N/A';
+    const company = d.Insurance_company_name || 'Insurance Company';
+    const date = formatDate(d.Policy_expiry_date);
+
+    // Message Format
+    const message = `Dear ${name},\nYour ${type} policy (${number}) of ${company} expires on ${date}.\n\nPlease renew before the due date to continue coverage.`;
+
+    // Open WhatsApp
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`);
     setShowShareModal(false);
   };
 
@@ -477,19 +534,45 @@ const Policies = () => {
 
   const handleEdit = (policy) => { setEditingPolicy(policy); setShowEditModal(true); };
   
+  // ✅ UPDATED: Edit Save Handler (Validation + Anti-Double Click)
   const handleSaveEdit = async () => {
+    // 🛑 1. Stop if already saving (Prevents double clicks)
+    if (saving) return; 
+
+    // 🔍 2. Validation
+    const details = editingPolicy.file_details;
+    if (details.Policy_expiry_date && !isValidDateFormat(details.Policy_expiry_date)) {
+        alert(`❌ Invalid Expiry Date: "${details.Policy_expiry_date}"\nPlease use format: DD/MM/YYYY (e.g., 25/12/2025)`);
+        return;
+    }
+    if (details.Policy_start_date && !isValidDateFormat(details.Policy_start_date)) {
+        alert(`❌ Invalid Start Date: "${details.Policy_start_date}"\nPlease use format: DD/MM/YYYY`);
+        return;
+    }
+    
+    // 🔒 3. Lock the button
+    setSaving(true);
+
     try {
       const response = await policyService.updatePolicy({
         document_id: editingPolicy.document_id,
         file_details: editingPolicy.file_details
       });
+      
       if (response.success) {
         alert('✅ Policy updated');
         setShowEditModal(false);
         setEditingPolicy(null);
         await fetchPoliciesAndStats();
-      } else alert('❌ Update failed');
-    } catch (error) { alert('❌ Update failed'); }
+      } else {
+        alert('❌ Update failed');
+      }
+    } catch (error) { 
+        alert('❌ Update failed'); 
+    } finally {
+        // 🔓 4. Unlock button when finished
+        setSaving(false); 
+    }
   };
 
   const toggleExpandRow = (documentId) => { setExpandedRow(expandedRow === documentId ? null : documentId); };
@@ -530,7 +613,6 @@ const Policies = () => {
               {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
             
-            {/* HIDDEN FILE INPUT FOR EXCEL IMPORT */}
             <input 
               type="file" 
               accept=".xlsx, .xls"
@@ -549,7 +631,6 @@ const Policies = () => {
               {excelImporting ? 'Parsing...' : 'Import Excel (Free)'}
             </button>
 
-            {/* UPLOAD BUTTON - WITH LIMIT CHECK */}
             <button 
               className="btn btn-primary" 
               onClick={handleUploadClick}
@@ -619,7 +700,6 @@ const Policies = () => {
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 500 }}>
                     Showing <strong>{filteredPolicies.length}</strong> of {policies.length} policies
                   </div>
-                  {/* USAGE INDICATOR */}
                   <div style={{ 
                     fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px',
                     background: usageStats.isLimitReached ? '#fee2e2' : '#f0f9ff',
@@ -689,7 +769,6 @@ const Policies = () => {
                       />
                     </th>
                     <th style={{ width: '40px' }}></th>
-                    {/* UPDATED: Wider column for full file name */}
                     <th style={{ minWidth: '250px' }}>File Name</th>
                     <th>Policy Number</th>
                     <th>Company</th>
@@ -730,10 +809,8 @@ const Policies = () => {
                               {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                             </button>
                           </td>
-                          {/* UPDATED: Full File Name Display with Badge */}
                           <td style={{ fontWeight: 500, fontSize: '0.875rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {/* Label for Source Type (Excel vs PDF) */}
                                 {isExcel ? (
                                     <span style={{ 
                                         display:'flex', alignItems:'center', gap:'4px', 
@@ -753,7 +830,6 @@ const Policies = () => {
                                         <FileText size={12} /> PDF
                                     </span>
                                 )}
-                                {/* File Name (Wraps fully) */}
                                 <span style={{ wordBreak: 'break-word', lineHeight: '1.4' }}>
                                     {displayName}
                                 </span>
@@ -804,7 +880,6 @@ const Policies = () => {
                               >
                                 <Trash2 size={18} />
                               </button>
-                              {/* UPDATED: Only show Eye icon if it's NOT an Excel file AND has a filename */}
                               {fullFileName && !isExcel && (
                                 <a
                                   href={`${API_BASE_URL.replace('/api', '')}/uploads/${encodeURIComponent(fullFileName)}`}
@@ -829,8 +904,9 @@ const Policies = () => {
                                       {field.label}
                                     </div>
                                     <div style={{ fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>
+                                      {/* ✅ UPDATED: Exact Currency formatting in expanded view */}
                                       {field.key.includes('premium') || field.key.includes('Premium') 
-                                        ? formatCurrency(details[field.key])
+                                        ? formatCurrencyExact(details[field.key])
                                         : field.key.includes('date') || field.key.includes('Date')
                                         ? formatDate(details[field.key])
                                         : details[field.key] || 'N/A'}
@@ -1106,11 +1182,27 @@ const Policies = () => {
               ))}
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-              <button onClick={() => setShowEditModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>
+              <button 
+                onClick={() => setShowEditModal(false)} 
+                className="btn btn-secondary" 
+                style={{ flex: 1 }} 
+                disabled={saving} // Disable Cancel while saving
+              >
                 Cancel
               </button>
-              <button onClick={handleSaveEdit} className="btn btn-primary" style={{ flex: 1 }}>
-                Save Changes
+              
+              {/* ✅ FIXED BUTTON: Disabled & visual feedback during save */}
+              <button 
+                onClick={handleSaveEdit} 
+                className="btn btn-primary" 
+                style={{ 
+                    flex: 1, 
+                    opacity: saving ? 0.7 : 1, 
+                    cursor: saving ? 'not-allowed' : 'pointer' 
+                }}
+                disabled={saving} // 🔒 Prevents multiple clicks
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
