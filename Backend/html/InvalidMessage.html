@@ -3,18 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <title>Link Expired</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: sans-serif; background: #f4f4f4; text-align: center; padding-top: 50px; }
-    .container { width: 90%; max-width: 500px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    h1 { color: #dc2626; }
-    button { background: #1e40af; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f3f4f6; text-align: center; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .container { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 400px; width: 90%; }
+    .icon { font-size: 48px; margin-bottom: 20px; }
+    h1 { color: #1f2937; margin: 0 0 10px 0; font-size: 24px; }
+    p { color: #6b7280; margin-bottom: 30px; line-height: 1.5; }
+    button { background: #4f46e5; color: white; border: none; padding: 12px 30px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.2s; }
+    button:hover { background: #4338ca; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Link Expired</h1>
-    <p>This link is invalid or has already been used.</p>
-    <button onclick="window.location.href='https://smartdocs365.com'">Go To Home Page</button>
+    <div class="icon">🚫</div>
+    <h1>Link Invalid or Expired</h1>
+    <p>This verification link is invalid or has already been used. Please try requesting a new one.</p>
+    <button onclick="window.location.href='https://smartdocs365.com'">Return to Home</button>
   </div>
 </body>
 </html>

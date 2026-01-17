@@ -1,59 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <title>Policy Renewal Reminder</title>
 </head>
-<body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; margin: 0;">
-    <div style="max-width: 600px; margin: 0 auto; background: #fff; padding: 0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-        
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
-            <img src="https://smartdocs365-backend.onrender.com/logo.jpg" alt="SmartDocs365" style="height: 60px; margin-bottom: 15px;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Policy Renewal Reminder</h1>
-        </div>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #fff1f2;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 40px 0; text-align: center;">
+                <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px rgba(0,0,0,0.1);">
+                    
+                    <div style="background: #ffffff; padding: 25px; border-bottom: 3px solid #dc2626;">
+                        <img src="https://smartdocs365-backend.onrender.com/logo.png" alt="SmartDocs365" style="height: 45px;">
+                    </div>
 
-        <!-- Content -->
-        <div style="padding: 30px;">
-            <p style="font-size: 16px; color: #333; line-height: 1.6;">Dear <strong>{{ name }}</strong>,</p>
-            
-            <p style="font-size: 15px; color: #555; line-height: 1.6;">
-                This is to bring to your kind notice that your policy number <strong style="color: #667eea;">{{ number }}</strong> is expiring on <strong style="color: #dc2626;">{{ date }}</strong>.
-            </p>
+                    <div style="padding: 40px 30px; text-align: left;">
+                        <h2 style="color: #991b1b; margin-top: 0; font-size: 22px; text-align: center;">⚠️ Policy Renewal Reminder</h2>
+                        
+                        <p style="color: #374151; font-size: 16px; line-height: 1.6;">Dear <strong>{{ name }}</strong>,</p>
+                        
+                        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                            Your insurance policy is expiring soon. To ensure continuous coverage, please renew immediately.
+                        </p>
 
-            <!-- Alert Box -->
-            <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 20px; margin: 20px 0; border-radius: 6px;">
-                <p style="margin: 0; font-size: 18px; font-weight: bold; color: #c2410c;">
-                    ⏰ Remaining Time: {{ days }} Days
-                </p>
-            </div>
+                        <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                            <table style="width: 100%;">
+                                <tr>
+                                    <td style="padding: 5px 0; color: #6b7280; font-size: 14px;">Policy Number:</td>
+                                    <td style="padding: 5px 0; color: #111827; font-weight: bold; text-align: right;">{{ number }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px 0; color: #6b7280; font-size: 14px;">Expiry Date:</td>
+                                    <td style="padding: 5px 0; color: #dc2626; font-weight: bold; text-align: right;">{{ date }}</td>
+                                </tr>
+                            </table>
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #fecaca; text-align: center;">
+                                <span style="display: inline-block; background: #dc2626; color: white; padding: 6px 15px; border-radius: 20px; font-size: 14px; font-weight: bold;">
+                                    ⏳ {{ days }}
+                                </span>
+                            </div>
+                        </div>
 
-            <p style="font-size: 15px; color: #555; line-height: 1.6;">
-                We would request you to renew your policy well in time so as to maintain continuity of the insurance cover. Kindly get in touch with your policy issuing office / agent / intermediary in case you require any assistance.
-            </p>
+                        <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">
+                            Please contact your agent or insurance provider to renew. If you have already renewed this policy, you can safely ignore this email.
+                        </p>
+                    </div>
 
-            <p style="font-size: 15px; color: #555; line-height: 1.6;">
-                Thank you for giving us an opportunity to serve you. We assure you of our best services at all times and look forward to your further association with us.
-            </p>
-
-            <p style="font-size: 13px; color: #999; font-style: italic; margin-top: 20px;">
-                <em>Please ignore if you have already renewed your policy.</em>
-            </p>
-
-            <!-- Footer -->
-            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0; font-size: 15px; color: #333; font-weight: 600;">Warm Regards,</p>
-                <p style="margin: 5px 0 0 0; font-size: 15px; color: #667eea; font-weight: bold;">SmartDocs365 Team</p>
-                <p style="margin: 15px 0 0 0; font-size: 13px; color: #999;">
-                    📧 Support@smartdocs365.com | 🌐 smartdocs365.com
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Email Footer -->
-    <div style="max-width: 600px; margin: 20px auto; text-align: center; font-size: 12px; color: #999;">
-        <p style="margin: 0;">© 2026 SmartDocs365. All rights reserved.</p>
-    </div>
+                    <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+                        <p style="margin: 0; color: #9ca3af; font-size: 12px;">Team SmartDocs365</p>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

@@ -18,10 +18,10 @@ const expiryPolicyMailFile = path.join(__dirname, "../html/", "policyExpireMail.
 const secretKey = process.env.SECRET_KEY || 'sdlfklfas6df5sd4fsdf5'; 
 const algorithm = 'aes-256-cbc';
 const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
+const LOGO_URL = "https://smartdocs365-backend.onrender.com/logo.png"; // ✅ Global Logo URL
 
 /* ============================================================
    ✅ ZOHO MAIL HTTP API (INDIA DC - .IN)
-   Setup: https://www.zoho.com/mail/help/api/
    ============================================================ */
 
 // Zoho OAuth Configuration
@@ -30,15 +30,13 @@ let tokenExpiry = null;
 
 // Get Zoho Access Token
 async function getZohoToken() {
-  // Return cached token if still valid
   if (zohoAccessToken && tokenExpiry && Date.now() < tokenExpiry) {
     return zohoAccessToken;
   }
 
-  // Refresh token - USING .IN (India)
   try {
     const response = await axios.post(
-      'https://accounts.zoho.in/oauth/v2/token', // CHANGED TO .IN
+      'https://accounts.zoho.in/oauth/v2/token',
       null,
       {
         params: {
@@ -51,13 +49,10 @@ async function getZohoToken() {
       }
     );
 
-    if (response.data.error) {
-       throw new Error(response.data.error);
-    }
+    if (response.data.error) throw new Error(response.data.error);
 
     zohoAccessToken = response.data.access_token;
     tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000;
-    
     console.log('✅ Zoho token refreshed (India DC)');
     return zohoAccessToken;
   } catch (error) {
@@ -66,48 +61,35 @@ async function getZohoToken() {
   }
 }
 
-// Get Zoho Account ID (cached)
+// Get Zoho Account ID
 let zohoAccountId = null;
 async function getZohoAccountId(token) {
   if (zohoAccountId) return zohoAccountId;
 
   try {
     const response = await axios.get(
-      'https://mail.zoho.in/api/accounts', // CHANGED TO .IN
-      {
-        headers: { 'Authorization': `Zoho-oauthtoken ${token}` },
-        timeout: 10000
-      }
+      'https://mail.zoho.in/api/accounts',
+      { headers: { 'Authorization': `Zoho-oauthtoken ${token}` }, timeout: 10000 }
     );
-    
     zohoAccountId = response.data.data[0].accountId;
-    console.log('✅ Zoho account ID retrieved:', zohoAccountId);
     return zohoAccountId;
   } catch (error) {
-    console.error('❌ Failed to get Zoho account ID:', error.response?.data || error.message);
+    console.error('❌ Failed to get Zoho account ID:', error.message);
     throw error;
   }
 }
 
 // Send Email via Zoho Mail API
 async function sendEmail(mailOptions) {
-  // Check if Zoho is configured
   if (!process.env.ZOHO_REFRESH_TOKEN) {
-    console.error('❌ ZOHO_REFRESH_TOKEN not set! Cannot send emails.');
+    console.error('❌ ZOHO_REFRESH_TOKEN not set!');
     return { success: false, error: 'Zoho not configured' };
   }
 
   try {
-    // Get access token
     const token = await getZohoToken();
-    
-    // Get account ID
     const accountId = await getZohoAccountId(token);
-    
-    // Prepare email data
-    const toAddresses = Array.isArray(mailOptions.to) 
-      ? mailOptions.to.join(',') 
-      : mailOptions.to;
+    const toAddresses = Array.isArray(mailOptions.to) ? mailOptions.to.join(',') : mailOptions.to;
 
     const emailData = {
       fromAddress: process.env.EMAIL_USER || 'Support@smartdocs365.com',
@@ -117,13 +99,10 @@ async function sendEmail(mailOptions) {
       mailFormat: 'html'
     };
 
-    if (mailOptions.replyTo) {
-      emailData.replyTo = mailOptions.replyTo;
-    }
+    if (mailOptions.replyTo) emailData.replyTo = mailOptions.replyTo;
 
-    // Send via Zoho API - USING .IN
     const response = await axios.post(
-      `https://mail.zoho.in/api/accounts/${accountId}/messages`, // CHANGED TO .IN
+      `https://mail.zoho.in/api/accounts/${accountId}/messages`,
       emailData,
       {
         headers: { 
@@ -136,14 +115,13 @@ async function sendEmail(mailOptions) {
 
     console.log('✅ Email sent via Zoho API to:', toAddresses);
     return { success: true, response: response.data };
-    
   } catch (error) {
     console.error('❌ Zoho API error:', error.response?.data || error.message);
     return { success: false, error };
   }
 }
 
-// Rate-limited queue to prevent spam
+// Rate-limited queue
 let emailQueue = [];
 let isProcessing = false;
 
@@ -156,35 +134,21 @@ async function sendEmailQueued(mailOptions) {
 
 async function processQueue() {
   if (isProcessing || emailQueue.length === 0) return;
-  
   isProcessing = true;
-  
   while (emailQueue.length > 0) {
     const { mailOptions, resolve } = emailQueue.shift();
-    
     const result = await sendEmail(mailOptions);
     resolve(result);
-    
-    // Wait 2 seconds between emails
-    if (emailQueue.length > 0) {
-      await new Promise(r => setTimeout(r, 2000));
-    }
+    if (emailQueue.length > 0) await new Promise(r => setTimeout(r, 2000));
   }
-  
   isProcessing = false;
 }
 
-// Initialize on startup
+// Initialize
 setTimeout(async () => {
   if (process.env.ZOHO_REFRESH_TOKEN) {
-    try {
-      await getZohoToken();
-      console.log('✅ Zoho Mail API ready (India DC - Render compatible)');
-    } catch (error) {
-      console.error('⚠️ Zoho API initialization failed. Check credentials.');
-    }
-  } else {
-    console.log('⚠️ Zoho not configured. Set ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN');
+    try { await getZohoToken(); console.log('✅ Zoho Mail API ready'); } 
+    catch (e) { console.error('⚠️ Zoho API initialization failed'); }
   }
 }, 2000);
 
@@ -195,14 +159,10 @@ setTimeout(async () => {
 function sendWelcomeMail(email, name) {
   fs.readFile(welcomeMessageFile, "utf8", async (err, template) => {
     if (err) return console.error("❌ Template missing:", err);
-
-    const renderedTemplate = template.replace("{{{ name }}}", name);
-
-    await sendEmailQueued({
-      to: email,
-      subject: "Welcome to SmartDocs365!",
-      html: renderedTemplate,
-    });
+    // Force Logo URL
+    const fixedTemplate = template.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
+    const rendered = fixedTemplate.replace("{{{ name }}}", name);
+    await sendEmailQueued({ to: email, subject: "Welcome to SmartDocs365!", html: rendered });
   });
 }
 
@@ -210,58 +170,71 @@ async function expiredMail(email, name, date) {
   try {
     const templateData = fs.readFileSync(expiryMailFile, 'utf8');
     const template = Handlebars.compile(templateData);
-    const renderedTemplate = template({ name, date });
+    const rendered = template({ name, date, logoUrl: LOGO_URL }); 
+    
+    // Fallback regex to ensure logo is correct
+    const finalHtml = rendered.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
 
-    await sendEmailQueued({
-      to: email,
-      subject: "⚠️ Subscription Expiring Soon",
-      html: renderedTemplate,
-    });
-  } catch (err) {
-    console.error("❌ Template error:", err.message);
-  }
+    await sendEmailQueued({ to: email, subject: "⚠️ Subscription Expiring Soon", html: finalHtml });
+  } catch (err) { console.error("❌ Template error:", err.message); }
 }
 
 async function expiredPolicyMail(email, name, date, number, days) {
   try {
     const templateData = fs.readFileSync(expiryPolicyMailFile, 'utf8');
     const template = Handlebars.compile(templateData);
-    const renderedTemplate = template({ name, number, date, days });
+    const rendered = template({ name, number, date, days });
+    
+    // Force Logo URL
+    const finalHtml = rendered.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
 
     // Send to customer
-    console.log(`📧 Sending to customer: ${email}`);
-    await sendEmailQueued({
-      to: email,
-      subject: `🔔 Policy Renewal Reminder - ${number}`,
-      html: renderedTemplate,
-    });
+    await sendEmailQueued({ to: email, subject: `🔔 Policy Renewal Reminder - ${number}`, html: finalHtml });
+  } catch (err) { console.error("❌ Template error:", err.message); }
+}
 
-    // Send copy to you
-    const yourEmail = process.env.EMAIL_USER || 'Support@smartdocs365.com';
-    if (yourEmail !== email) {
-      console.log(`📧 Sending copy to: ${yourEmail}`);
-      await sendEmailQueued({
-        to: yourEmail,
-        subject: `🔔 [Copy] Policy Renewal - ${number}`,
-        html: renderedTemplate,
-      });
-    }
-  } catch (err) {
-    console.error("❌ Template error:", err.message);
-  }
+// ✅ NEW: Payment Success Email
+async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate) {
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px;">
+      <img src="${LOGO_URL}" alt="SmartDocs365" style="height: 60px;">
+      <h2 style="color: #10b981;">Payment Successful!</h2>
+      <p>Dear ${name},</p>
+      <p>Thank you for purchasing <strong>${planName}</strong>.</p>
+      <div style="background: #f0fdf4; padding: 15px; margin: 20px 0; border-radius: 8px;">
+        <p style="margin: 5px;"><strong>Amount Paid:</strong> ₹${amount}</p>
+        <p style="margin: 5px;"><strong>Plan Valid Until:</strong> ${expiryDate}</p>
+      </div>
+      <p>Your upload limit has been updated. You can now continue managing your policies.</p>
+      <a href="https://smartdocs365.com/dashboard" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 10px;">Go to Dashboard</a>
+    </div>
+  `;
+  await sendEmailQueued({ to: email, subject: "✅ Payment Successful - Plan Activated", html: htmlContent });
+}
+
+// ✅ NEW: Limit Reached Email
+async function sendLimitReachedMail(email, name, limit) {
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px;">
+      <img src="${LOGO_URL}" alt="SmartDocs365" style="height: 60px;">
+      <h2 style="color: #ef4444;">⚠️ Upload Limit Reached</h2>
+      <p>Dear ${name},</p>
+      <p>You have reached your plan's limit of <strong>${limit} uploads</strong>.</p>
+      <p>To continue uploading new policies, please upgrade your plan.</p>
+      <div style="margin: 25px 0;">
+        <a href="https://smartdocs365.com/subscription" style="background: #ef4444; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Upgrade Plan Now</a>
+      </div>
+    </div>
+  `;
+  await sendEmailQueued({ to: email, subject: "⚠️ Action Required: Upload Limit Reached", html: htmlContent });
 }
 
 function sendOtpCode(email, otpCode) {
   fs.readFile(sendOtpFile, "utf8", async (err, template) => {
     if (err) return console.error("❌ OTP template missing:", err);
-
-    const renderedTemplate = template.replace("{{{ otpCode }}}", otpCode);
-
-    await sendEmailQueued({
-      to: email,
-      subject: "Your OTP Verification Code",
-      html: renderedTemplate,
-    });
+    const fixedTemplate = template.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
+    const rendered = fixedTemplate.replace("{{{ otpCode }}}", otpCode);
+    await sendEmailQueued({ to: email, subject: "Your OTP Verification Code", html: rendered });
   });
 }
 
@@ -275,11 +248,13 @@ async function sendResetEmail(email, name, resetToken) {
     const templateData = fs.readFileSync(ResetPasswordMail, 'utf8');
     const template = Handlebars.compile(templateData);
     const renderedTemplate = template({ name, resetToken, baseUrl });
+    // Force Logo
+    const finalHtml = renderedTemplate.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
 
     const result = await sendEmailQueued({
       to: email,
       subject: 'Reset Your Password - SmartDocs365',
-      html: renderedTemplate,
+      html: finalHtml,
     });
     
     return result.success;
@@ -313,10 +288,7 @@ async function sendMailToSupportMail(payload) {
     });
 }
 
-/* ============================================================
-   HELPER FUNCTIONS
-   ============================================================ */
-
+// HELPER EXPORTS
 function addDaysToCurrentDate(days) {
   const currentDate = new Date();
   const estOffset = -5 * 60 * 60 * 1000;
@@ -428,5 +400,7 @@ module.exports = {
   sendWelcomeMail, encryptData, decryptData, validateZIPCode, deleteFile,
   addDaysToCurrentDate, priceBreakDown, sendResetEmail, validateCardNumber,
   isFutureDate, isValidDate, sendOtpCode, expiredMail, expiredPolicyMail,
-  sendMailToSupportMail
+  sendMailToSupportMail,
+  sendPaymentSuccessMail,
+  sendLimitReachedMail
 };
