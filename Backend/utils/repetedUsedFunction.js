@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ ZOHO MAIL VIA HTTP API (Works on Render Free!)
+// ✅ ZOHO MAIL VIA HTTP API (INDIA DC FIXED)
 // ============================================
 const axios = require("axios");
 const path = require("path");
@@ -20,7 +20,7 @@ const algorithm = 'aes-256-cbc';
 const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
 
 /* ============================================================
-   ✅ ZOHO MAIL HTTP API (No SMTP - Works on Render Free!)
+   ✅ ZOHO MAIL HTTP API (INDIA DC - .IN)
    Setup: https://www.zoho.com/mail/help/api/
    ============================================================ */
 
@@ -35,10 +35,10 @@ async function getZohoToken() {
     return zohoAccessToken;
   }
 
-  // Refresh token
+  // Refresh token - USING .IN (India)
   try {
     const response = await axios.post(
-      'https://accounts.zoho.com/oauth/v2/token',
+      'https://accounts.zoho.in/oauth/v2/token', // CHANGED TO .IN
       null,
       {
         params: {
@@ -51,13 +51,17 @@ async function getZohoToken() {
       }
     );
 
+    if (response.data.error) {
+       throw new Error(response.data.error);
+    }
+
     zohoAccessToken = response.data.access_token;
     tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000;
     
-    console.log('✅ Zoho token refreshed');
+    console.log('✅ Zoho token refreshed (India DC)');
     return zohoAccessToken;
   } catch (error) {
-    console.error('❌ Zoho token refresh failed:', error.message);
+    console.error('❌ Zoho token refresh failed:', error.response?.data || error.message);
     throw error;
   }
 }
@@ -69,7 +73,7 @@ async function getZohoAccountId(token) {
 
   try {
     const response = await axios.get(
-      'https://mail.zoho.com/api/accounts',
+      'https://mail.zoho.in/api/accounts', // CHANGED TO .IN
       {
         headers: { 'Authorization': `Zoho-oauthtoken ${token}` },
         timeout: 10000
@@ -77,10 +81,10 @@ async function getZohoAccountId(token) {
     );
     
     zohoAccountId = response.data.data[0].accountId;
-    console.log('✅ Zoho account ID retrieved');
+    console.log('✅ Zoho account ID retrieved:', zohoAccountId);
     return zohoAccountId;
   } catch (error) {
-    console.error('❌ Failed to get Zoho account ID:', error.message);
+    console.error('❌ Failed to get Zoho account ID:', error.response?.data || error.message);
     throw error;
   }
 }
@@ -90,7 +94,6 @@ async function sendEmail(mailOptions) {
   // Check if Zoho is configured
   if (!process.env.ZOHO_REFRESH_TOKEN) {
     console.error('❌ ZOHO_REFRESH_TOKEN not set! Cannot send emails.');
-    console.log('📖 Setup guide: Add ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN to environment');
     return { success: false, error: 'Zoho not configured' };
   }
 
@@ -118,9 +121,9 @@ async function sendEmail(mailOptions) {
       emailData.replyTo = mailOptions.replyTo;
     }
 
-    // Send via Zoho API
+    // Send via Zoho API - USING .IN
     const response = await axios.post(
-      `https://mail.zoho.com/api/accounts/${accountId}/messages`,
+      `https://mail.zoho.in/api/accounts/${accountId}/messages`, // CHANGED TO .IN
       emailData,
       {
         headers: { 
@@ -176,7 +179,7 @@ setTimeout(async () => {
   if (process.env.ZOHO_REFRESH_TOKEN) {
     try {
       await getZohoToken();
-      console.log('✅ Zoho Mail API ready (HTTP mode - Render compatible)');
+      console.log('✅ Zoho Mail API ready (India DC - Render compatible)');
     } catch (error) {
       console.error('⚠️ Zoho API initialization failed. Check credentials.');
     }
