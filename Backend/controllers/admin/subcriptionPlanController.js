@@ -1,11 +1,13 @@
 // ============================================
-// FILE: Backend/controllers/admin/subcriptionPlanController.js (FINAL FIXED VERSION)
+// FILE: Backend/controllers/admin/subcriptionPlanController.js
+// ✅ FIXED: Sends "Expiry Mail" IMMEDIATELY when Admin updates plan
 // ============================================
 
 const subcriptionTypesModel = require("../../models/subcriptionTypesModel");
 const userSubcriptionInfoModel = require("../../models/userSubcriptionInfoModel"); 
+const userModel = require("../../models/userModel"); // ✅ Added User Model
 const { v4 } = require("uuid");
-const { getCurrentDateTime } = require("../../utils/repetedUsedFunction");
+const { getCurrentDateTime, sendSubscriptionExpiryMail } = require("../../utils/repetedUsedFunction"); // ✅ Imported Email Function
 
 // 1. CREATE PLAN
 const create = async (req, res, next) => {
@@ -36,7 +38,7 @@ const create = async (req, res, next) => {
   }
 };
 
-// 2. UPDATE PLAN (FIXED SYNC LOGIC)
+// 2. UPDATE PLAN (FIXED: Immediate Email Trigger)
 const updatePlan = async (req, res, next) => {
   try {
     const plan_id = req.params?.id;
@@ -68,30 +70,25 @@ const updatePlan = async (req, res, next) => {
     console.log("✅ [Success] Plan Definition Updated.");
 
     // =========================================================
-    // ✅ SYNC LOGIC: Update All Existing Users on this Plan
+    // ✅ SYNC LOGIC: Update Users & TRIGGER EMAIL
     // =========================================================
     if (plan_duration !== undefined || pdf_limit !== undefined) {
       console.log(`🔄 [Sync] Starting user sync...`);
       
-      const subscribers = await userSubcriptionInfoModel.find({ plan_id: plan_id });
+      const subscribers = await userSubcriptionInfoModel.find({ plan_id: plan_id, is_active: true });
       console.log(`   [Sync] Found ${subscribers.length} active subscribers.`);
       
       let updatedCount = 0;
 
       for (const sub of subscribers) {
-        // 🛡️ SAFETY CHECK: Skip broken records
-        if (!sub.user_id) {
-            console.log("   ⚠️ [Skip] Found record without user_id, skipping...");
-            continue;
-        }
+        if (!sub.user_id) continue;
 
         let updates = {};
 
         // A. Update PDF Limit
         if (pdf_limit !== undefined) updates.pdf_limit = Number(pdf_limit);
 
-        // B. Recalculate Expiry Date (ANCHORED TO TODAY)
-        // This ensures the update always gives valid time from the moment you click update.
+        // B. Recalculate Expiry & TRIGGER MAIL
         if (plan_duration !== undefined) {
           const now = new Date();
           const newExpiry = new Date(now);
@@ -99,7 +96,24 @@ const updatePlan = async (req, res, next) => {
           
           updates.expiry_date = newExpiry;
           
-          console.log(`   -> User ${sub.user_id}: Resetting Duration. New Expiry: ${newExpiry.toISOString().split('T')[0]}`);
+          // Calculate Days Left Immediately
+          const diffTime = newExpiry - now;
+          const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          console.log(`   -> User ${sub.user_id}: New Expiry: ${newExpiry.toISOString().split('T')[0]} (${daysLeft} days left)`);
+
+          // ⚡ IMMEDIATE EMAIL TRIGGER
+          // If days left match your criteria (15, 10, 5, 3, 1, 0) OR if it is Expired (<= 0)
+          const triggerDays = [15, 10, 5, 3, 1, 0];
+          
+          if (triggerDays.includes(daysLeft) || daysLeft <= 0) {
+             const user = await userModel.findOne({ user_id: sub.user_id });
+             if (user) {
+                 console.log(`      ⚡ TRIGGERING IMMEDIATE EMAIL to: ${user.email_address}`);
+                 // Pass 'daysLeft' to the mail function
+                 await sendSubscriptionExpiryMail(user.email_address, user.first_name, daysLeft);
+             }
+          }
         }
 
         if (Object.keys(updates).length > 0) {
