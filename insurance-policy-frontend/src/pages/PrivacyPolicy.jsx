@@ -159,7 +159,7 @@ const PrivacyPolicy = () => {
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap' }}>
             <a 
-              href="mailto:superadmin@smartdocs365.com"
+              href="mailto:Support@smartdocs365.com"
               style={{
                 color: 'white',
                 textDecoration: 'none',
@@ -175,7 +175,7 @@ const PrivacyPolicy = () => {
               }}
             >
               <Mail size={20} />
-              superadmin@smartdocs365.com
+              Support@smartdocs365.com
             </a>
             
             <a 

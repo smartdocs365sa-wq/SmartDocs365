@@ -3,7 +3,7 @@
 // ============================================
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Upload, Shield, CreditCard, AlertCircle, ChevronRight, MessageCircle } from 'lucide-react';
+import { Search, Upload, Shield, CreditCard, ChevronRight, MessageCircle } from 'lucide-react';
 
 const HelpCenter = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,7 +33,7 @@ const HelpCenter = () => {
       questions: [
         {
           q: 'Is my data secure?',
-          a: 'Yes! All your documents are encrypted using industry-standard encryption. We take security very seriously.'
+          a: 'To maximize your security, your policy PDFs are stored in our database only temporarily. For enhanced safety, if our system updates or a new version is released, older documents may be automatically deleted from our database. We strongly recommend that you download and keep a safe local copy of your original insurance documents.'
         },
         {
           q: 'How do I reset my password?',
@@ -56,10 +56,6 @@ const HelpCenter = () => {
         {
           q: 'How do I upgrade my plan?',
           a: 'Go to Subscription → Choose a plan → Complete the payment. Your upgrade will be instant.'
-        },
-        {
-          q: 'Can I cancel my subscription?',
-          a: 'Yes, you can cancel anytime from the Subscription page. You\'ll have access until the end of your billing period.'
         }
       ]
     }
@@ -234,7 +230,7 @@ const HelpCenter = () => {
               Contact Support
             </Link>
             <a
-              href="mailto:superadmin@smartdocs365.com"
+              href="mailto:Support@smartdocs365.com"
               style={{
                 background: 'rgba(255,255,255,0.2)',
                 color: 'white',

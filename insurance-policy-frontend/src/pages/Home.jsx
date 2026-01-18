@@ -327,7 +327,7 @@ const Home = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2.5rem' }}>
             {[
               { icon: Upload, title: 'Smart Upload', desc: 'Upload PDFs or Excel files. Our AI extracts data instantly.', color: '#3b82f6' },
-              { icon: Shield, title: 'Bank-Grade Security', desc: 'Your sensitive documents are encrypted and stored securely.', color: '#10b981' },
+              { icon: Shield, title: 'Temporary Secure Storage', desc: 'Documents are encrypted and stored temporarily to ensure safety, so please maintain your own local backups.', color: '#10b981' },
               { icon: TrendingUp, title: 'Renewal Tracking', desc: 'Automated alerts ensure you never miss a policy expiry.', color: '#f59e0b' },
               { icon: CheckCircle, title: 'Centralized Hub', desc: 'View, edit, and download all your policies in one dashboard.', color: '#8b5cf6' }
             ].map((feature, index) => (

@@ -14,19 +14,24 @@ const ContactUs = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setSubmitted(true);
-      setLoading(false);
-      setFormData({ name: '', email: '', subject: '', message: '' });
+    // FIX: Using mailto to ensure the email is actually sent via the user's email client
+    const mailToLink = `mailto:Support@smartdocs365.com?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(
+      `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
+    )}`;
+
+    // Open email client
+    window.location.href = mailToLink;
+
+    setLoading(false);
+    setSubmitted(true);
+    setFormData({ name: '', email: '', subject: '', message: '' });
       
-      // Reset success message after 5 seconds
-      setTimeout(() => setSubmitted(false), 5000);
-    }, 1000);
+    // Reset success message after 5 seconds
+    setTimeout(() => setSubmitted(false), 5000);
   };
 
   const handleChange = (e) => {
@@ -65,8 +70,8 @@ const ContactUs = () => {
                 </div>
                 <div>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.25rem' }}>Email Us</h3>
-                  <a href="mailto:superadmin@smartdocs365.com" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '1rem' }}>
-                    superadmin@smartdocs365.com
+                  <a href="mailto:Support@smartdocs365.com" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '1rem' }}>
+                    Support@smartdocs365.com
                   </a>
                 </div>
               </div>
@@ -172,7 +177,7 @@ const ContactUs = () => {
                 gap: '0.75rem'
               }}>
                 <CheckCircle size={20} />
-                <span>Message sent successfully! We'll get back to you soon.</span>
+                <span>Opening your email client...</span>
               </div>
             )}
 
@@ -258,7 +263,7 @@ const ContactUs = () => {
                   opacity: loading ? 0.7 : 1
                 }}
               >
-                {loading ? 'Sending...' : (
+                {loading ? 'Opening Email...' : (
                   <>
                     <Send size={20} />
                     Send Message
