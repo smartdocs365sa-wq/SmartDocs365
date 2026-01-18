@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/controllers/pdfDataController.js
-// ✅ FIXED: Limit Email Triggers IMMEDIATELY on 10/10
+// ✅ FIXED: Limit Email Triggers IMMEDIATELY & SAFELY
 // ============================================
 
 const PDFDetails = require("../models/pdfDetailsModel");
@@ -40,19 +40,23 @@ exports.update = async (req, res) => {
         let policy = await PDFDetails.findOne({ document_id, user_id });
         
         // ---------------------------------------------------------
-        // 3. BLOCKING CHECK (Prevents the 11th Upload)
+        // 3. BLOCKING CHECK (Prevents exceeding the Limit)
         // ---------------------------------------------------------
         if (!policy) {
             const sub = await UserSubscription.findOne({ user_id });
             
-            // If already at limit (e.g. 10/10), BLOCK the new upload
-            if (sub && sub.pdf_limit > 0 && sub.total_uploads_used >= sub.pdf_limit) {
-                console.log(`⚠️ Limit Reached: ${sub.total_uploads_used}/${sub.pdf_limit}`);
+            // Safe Number Conversion
+            const used = sub ? Number(sub.total_uploads_used) : 0;
+            const limit = sub ? Number(sub.pdf_limit) : 0;
+
+            // If already at limit (e.g. 10 >= 10), BLOCK the new upload
+            if (sub && limit > 0 && used >= limit) {
+                console.log(`⚠️ Limit Reached (Blocked): ${used}/${limit}`);
                 
-                // Optional: Send reminder again if they try to upload when full
+                // Optional: Send reminder again
                 const user = await User.findOne({ user_id });
                 if (user) {
-                    await sendLimitReachedMail(user.email_address, user.first_name, sub.pdf_limit);
+                    await sendLimitReachedMail(user.email_address, user.first_name, limit);
                 }
 
                 return res.status(403).json({ 
@@ -84,16 +88,20 @@ exports.update = async (req, res) => {
             // Increment Counter
             await UserSubscription.updateOne({ user_id }, { $inc: { total_uploads_used: 1 } });
 
-            // ✅ FIX: Check if we JUST hit the limit (e.g. became 10/10)
+            // ✅ FIX: IMMEDIATE EMAIL CHECK
             // We fetch the subscription AGAIN to see the new total
             const updatedSub = await UserSubscription.findOne({ user_id });
             
-            if (updatedSub && updatedSub.pdf_limit > 0 && updatedSub.total_uploads_used === updatedSub.pdf_limit) {
-                console.log(`🚨 JUST HIT LIMIT (${updatedSub.total_uploads_used}/${updatedSub.pdf_limit}) - Sending Mail Immediately!`);
+            // Safe Number Conversion for the Check
+            const newUsed = Number(updatedSub.total_uploads_used);
+            const newLimit = Number(updatedSub.pdf_limit);
+            
+            if (updatedSub && newLimit > 0 && newUsed >= newLimit) {
+                console.log(`🚨 HIT LIMIT (${newUsed}/${newLimit}) - Sending Mail Immediately!`);
                 
                 const user = await User.findOne({ user_id });
                 if (user) {
-                    await sendLimitReachedMail(user.email_address, user.first_name, updatedSub.pdf_limit);
+                    await sendLimitReachedMail(user.email_address, user.first_name, newLimit);
                 }
             }
         }
@@ -112,13 +120,13 @@ exports.update = async (req, res) => {
                 const diffTime = expiryDate - today;
                 const daysUntilExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
-                console.log(`📅 Date Check: ${daysUntilExpiry} days remaining`);
+                // console.log(`📅 Date Check: ${daysUntilExpiry} days remaining`);
 
                 const futureTriggers = [30, 15, 10, 5, 3, 1, 0];
                 const isExpired = daysUntilExpiry < 0; 
 
                 if (futureTriggers.includes(daysUntilExpiry) || isExpired) {
-                    console.log(`⚡ TRIGGERING EXPIRY EMAIL`);
+                    // console.log(`⚡ TRIGGERING EXPIRY EMAIL`);
                     
                     const pEmail = file_details.Policyholder_emailid;
                     const pName = file_details.Policyholder_name || "Customer";
@@ -142,7 +150,7 @@ exports.update = async (req, res) => {
         res.json({ success: true, message: 'Policy saved', data: policy });
 
     } catch (error) {
-        console.error(error);
+        console.error("❌ Update Error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
