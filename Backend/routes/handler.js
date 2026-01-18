@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/routes/handler.js
-// ✅ FIXED - Increments upload counter
+// ✅ FIXED: Uploads, Counter Increment + INSTANT EMAIL TRIGGER
 // ============================================
 
 const express = require("express");
@@ -10,12 +10,18 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
+const { v4 } = require("uuid");
+
+// ✅ MODELS
 const pdfDetailsModel = require("../models/pdfDetailsModel");
 const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel");
-const userSubcriptionInfoModel = require("../models/userSubcriptionInfoModel"); // ✅ ADDED
-const blogModel = require("../models/blogModel"); 
-const { v4 } = require("uuid");
+const userSubcriptionInfoModel = require("../models/userSubcriptionInfoModel");
+const blogModel = require("../models/blogModel");
+const userModel = require("../models/userModel"); // ✅ ADDED: To fetch email address
+
+// ✅ UTILS (Import Email Function)
+const { sendLimitReachedMail } = require("../utils/repetedUsedFunction"); 
 
 /* ===============================
    MULTER CONFIG
@@ -50,7 +56,7 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "FIXED-COUNTER-INCREMENT" });
+  res.json({ status: "success", version: "FIXED-EMAIL-TRIGGER" });
 });
 
 /* ===============================
@@ -61,8 +67,7 @@ router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
 router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));
 
-// ✅ CRITICAL: Dedicated Payment Callback (COMPLETELY SEPARATE)
-console.log('🔔 Registering PUBLIC callback: POST /api/recharge/status-update/*');
+// ✅ CRITICAL: Dedicated Payment Callback
 router.use("/recharge/status-update", require("./apis/paymentCallback"));
 
 // Public Blogs
@@ -98,11 +103,11 @@ router.use("/pdf", require("./apis/pdfData"));
 router.use("/questions", require("./apis/userQuestions"));
 router.use("/import-excel-data", require("./apis/importExcelData"));
 
-// Protected recharge routes (purchase/history only)
+// Protected recharge routes
 router.use("/recharge", require("./apis/recharge"));
 
 /* ===============================
-   PDF UPLOAD - ✅ FIXED WITH COUNTER INCREMENT
+   PDF UPLOAD - ✅ FIXED WITH EMAIL TRIGGER
 ================================ */
 router.post("/upload-pdf", upload.any(), async (req, res) => {
   if (!req.files || req.files.length === 0) {
@@ -116,7 +121,7 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
   console.log('   User:', user_id);
   console.log('   Files:', req.files.length);
 
-  // ✅ Get user's subscription info (for counter)
+  // ✅ Get user's subscription info
   const userSubscription = await userSubcriptionInfoModel.findOne({ user_id });
   
   if (!userSubscription) {
@@ -129,7 +134,7 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
   console.log('   Current Counter:', userSubscription.total_uploads_used);
   console.log('   Limit:', userSubscription.pdf_limit);
 
-  // Check limit using the counter from subscription
+  // Check limit
   if (userSubscription.total_uploads_used >= userSubscription.pdf_limit) {
     return res.status(403).json({
       success: false,
@@ -145,7 +150,7 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
     });
   }
 
-  // Get active recharge for tagging PDFs
+  // Get active recharge
   const activeRecharge = await rechargeInfoModel.findOne({
     user_id,
     is_active: true,
@@ -162,7 +167,7 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
   const recharge_id = activeRecharge.recharge_id;
   const results = [];
   const process_id = v4();
-  let successfulUploads = 0; // ✅ Track successful uploads
+  let successfulUploads = 0;
 
   for (let i = 0; i < req.files.length; i++) {
     const filePath = req.files[i].path;
@@ -221,7 +226,7 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
           };
 
           const saved = await pdfDetailsModel.create(payload);
-          successfulUploads++; // ✅ Count successful upload
+          successfulUploads++; 
           
           results.push({
             document_id: saved.document_id,
@@ -241,7 +246,7 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
     });
   }
 
-  // ✅ CRITICAL FIX: INCREMENT THE COUNTER
+  // ✅ CRITICAL FIX: INCREMENT COUNTER & SEND EMAIL
   if (successfulUploads > 0) {
     console.log(`\n✅ Incrementing counter by ${successfulUploads}...`);
     
@@ -254,8 +259,25 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
       { new: true }
     );
 
-    console.log('   New Counter:', updatedSubscription.total_uploads_used);
-    console.log('   Remaining:', updatedSubscription.pdf_limit - updatedSubscription.total_uploads_used);
+    const currentCount = Number(updatedSubscription.total_uploads_used);
+    const limit = Number(updatedSubscription.pdf_limit);
+
+    console.log('   New Counter:', currentCount);
+    console.log('   Remaining:', limit - currentCount);
+
+    // 📧 MAIL TRIGGER: Did we just hit the limit?
+    if (limit > 0 && currentCount >= limit) {
+        console.log(`🚨 LIMIT REACHED (${currentCount}/${limit}) - Triggering Alert Email!`);
+        
+        // Fetch User details for email address
+        const user = await userModel.findOne({ user_id });
+        if (user) {
+            await sendLimitReachedMail(user.email_address, user.first_name || "User", limit);
+            console.log(`✅ Limit Mail Sent to ${user.email_address}`);
+        } else {
+            console.log("❌ Could not find user to send limit email.");
+        }
+    }
   }
 
   res.json({ 
