@@ -244,6 +244,14 @@ const Policies = () => {
       setSelectedPolicyIds([]);
     }
   };
+  const handleSelectOne = (id) => {
+    if (selectedPolicyIds.includes(id)) {
+      setSelectedPolicyIds(selectedPolicyIds.filter(itemId => itemId !== id));
+    } else {
+      setSelectedPolicyIds([...selectedPolicyIds, id]);
+    }
+  };
+
 
 // 1️⃣ Bulk Download Handler
 const handleBulkDownloadExcel = () => {
