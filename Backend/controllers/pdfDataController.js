@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/controllers/pdfDataController.js
-// ✅ FIXED: Immediate Limit Email & Safe Number Checks
+// ✅ FIXED: Excel = Unlimited Uploads + Excel Badge + Email Alerts
 // ============================================
 
 const PDFDetails = require("../models/pdfDetailsModel");
@@ -24,38 +24,36 @@ function parseDateString(dateStr) {
 function formatDate(date) { return date.toLocaleDateString('en-GB'); }
 
 exports.update = async (req, res) => {
-    let { document_id, file_details, file_name, remark = '' } = req.body;
+    // ✅ 1. Get 'is_manual' flag from Frontend
+    let { document_id, file_details, file_name, remark = '', is_manual } = req.body;
     const user_id = req.user_id;
     
     // Auto-ID for Excel Imports
     if (!document_id) {
         document_id = Date.now().toString();
-        console.log(`✨ Generated New ID for Import: ${document_id}`);
     }
 
-    console.log(`\n🔵 UPDATE/SAVE CALLED for Doc ID: ${document_id}`);
+    console.log(`\n🔵 UPDATE/SAVE CALLED for Doc ID: ${document_id} (Manual/Excel: ${is_manual})`);
     
     try {
         let policy = await PDFDetails.findOne({ document_id, user_id });
         
         // ---------------------------------------------------------
-        // 1. BLOCKING CHECK (Prevents exceeding the Limit)
+        // 2. LIMIT CHECK (Skip if this is an Excel/Manual Import)
         // ---------------------------------------------------------
-        if (!policy) {
+        // We only enforce limits on actual PDF uploads (!is_manual)
+        if (!policy && !is_manual) {
             const sub = await UserSubscription.findOne({ user_id });
             
             // Safe Number Conversion
             const used = sub ? Number(sub.total_uploads_used) : 0;
             const limit = sub ? Number(sub.pdf_limit) : 0;
 
-            // If already at limit (e.g. 15 >= 15), BLOCK the new upload & SEND MAIL
             if (sub && limit > 0 && used >= limit) {
                 console.log(`⚠️ Limit Reached (Blocked): ${used}/${limit}`);
                 
                 const user = await User.findOne({ user_id });
                 if (user) {
-                    // Send email immediately when they try to exceed limit
-                    console.log(`📧 Sending Limit Reached Mail to: ${user.email_address}`);
                     await sendLimitReachedMail(user.email_address, user.first_name, limit);
                 }
 
@@ -67,41 +65,48 @@ exports.update = async (req, res) => {
         }
 
         // ---------------------------------------------------------
-        // 2. SAVE POLICY & TRIGGER LIMIT EMAIL (For the exact moment they hit 100%)
+        // 3. SAVE POLICY
         // ---------------------------------------------------------
         if (policy) {
+            // Update existing
             policy.file_details = file_details;
             if (file_name) policy.file_name = file_name;
             policy.remark = remark;
             policy.updated_at = new Date();
+            // If it was manual before, keep it manual. If new update says manual, set it.
+            if (is_manual !== undefined) policy.is_manual = is_manual; 
             await policy.save();
         } else {
+            // Create New
             policy = await PDFDetails.create({
                 document_id, process_id: document_id, user_id,
                 file_name: file_name || 'Policy Document',
                 file_details, remark, is_active: true,
+                is_manual: !!is_manual, // ✅ Save the Excel Flag
                 created_at: new Date(), updated_at: new Date()
             });
             
-            // Increment Counter
-            await UserSubscription.updateOne({ user_id }, { $inc: { total_uploads_used: 1 } });
+            // ✅ ONLY Increment Counter if it is NOT Excel/Manual
+            if (!is_manual) {
+                await UserSubscription.updateOne({ user_id }, { $inc: { total_uploads_used: 1 } });
 
-            // ✅ IMMEDIATE EMAIL CHECK (Did we just hit the limit?)
-            const updatedSub = await UserSubscription.findOne({ user_id });
-            const newUsed = Number(updatedSub.total_uploads_used);
-            const newLimit = Number(updatedSub.pdf_limit);
-            
-            if (updatedSub && newLimit > 0 && newUsed === newLimit) {
-                console.log(`🚨 JUST HIT LIMIT (${newUsed}/${newLimit}) - Sending Mail Immediately!`);
-                const user = await User.findOne({ user_id });
-                if (user) {
-                    await sendLimitReachedMail(user.email_address, user.first_name, newLimit);
+                // Check for Immediate Limit Hit (100%)
+                const updatedSub = await UserSubscription.findOne({ user_id });
+                const newUsed = Number(updatedSub.total_uploads_used);
+                const newLimit = Number(updatedSub.pdf_limit);
+                
+                if (updatedSub && newLimit > 0 && newUsed === newLimit) {
+                    console.log(`🚨 JUST HIT LIMIT (${newUsed}/${newLimit}) - Sending Mail Immediately!`);
+                    const user = await User.findOne({ user_id });
+                    if (user) {
+                        await sendLimitReachedMail(user.email_address, user.first_name, newLimit);
+                    }
                 }
             }
         }
 
         // ---------------------------------------------------------
-        // 3. EXPIRY EMAIL TRIGGER
+        // 4. EMAIL TRIGGER (Works for BOTH Excel & PDF)
         // ---------------------------------------------------------
         if (file_details && file_details.Policy_expiry_date) {
             const expiryDate = parseDateString(file_details.Policy_expiry_date);

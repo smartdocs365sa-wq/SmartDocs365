@@ -385,6 +385,7 @@ const Policies = () => {
 
   // --- Save Handler (Extraction) ---
   // ✅ REPLACEMENT FUNCTION: Forces Email Trigger on Excel Import
+
   const handleSaveExtractedData = async () => {
     const currentPolicy = extractedPolicies[currentPolicyIndex];
     if (!currentPolicy) return;
@@ -394,18 +395,18 @@ const Policies = () => {
     setSaving(true);
     
     try {
-      // ✅ FIX: Force 'updatePolicy' for EVERYTHING (Excel Import & PDF).
-      // We generate a temporary ID for Excel files so they go to the 'update' backend function.
-      // This ensures the Email Logic runs immediately!
       const docId = currentPolicy.document_id || Date.now().toString();
 
+      // ✅ Send 'is_manual' flag to backend
+      // This ensures Excel imports do NOT increase the upload counter
       await policyService.updatePolicy({
           document_id: docId,
           file_name: currentPolicy.file_name,
-          file_details: currentPolicy.file_details
+          file_details: currentPolicy.file_details,
+          is_manual: currentPolicy.is_manual // Pass the flag
       });
 
-      // ✅ 1. Increment Success Counter
+      // Increment success counter
       savedCountRef.current += 1;
 
       if (currentPolicyIndex < extractedPolicies.length - 1) {
@@ -417,18 +418,15 @@ const Policies = () => {
         setExtractedPolicies([]);
         setCurrentPolicyIndex(0);
 
-        // ✅ 2. Calculate Saved vs Skipped
         const total = extractedPolicies.length;
         const saved = savedCountRef.current;
         const skipped = total - saved;
 
-        // ✅ 3. Show Dynamic Alert
         if (skipped === 0) {
              alert(`✅ All ${saved} policies saved successfully!`);
         } else {
              alert(`✅ Process Complete!\n\n📂 Saved: ${saved}\n⏭️ Skipped: ${skipped}`);
         }
-
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
