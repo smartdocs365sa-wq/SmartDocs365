@@ -47,6 +47,7 @@ const Policies = () => {
   const [excelImporting, setExcelImporting] = useState(false);
   const fileInputRef = useRef(null); 
   const savedCountRef = useRef(0);
+  
    
   // --- Extraction States ---
   const [showExtractedDataModal, setShowExtractedDataModal] = useState(false);
@@ -70,6 +71,10 @@ const Policies = () => {
   // --- Limit Modal States ---
   const [showUploadLimitModal, setShowUploadLimitModal] = useState(false);
   const [uploadLimitInfo, setUploadLimitInfo] = useState({ message: '', currentCount: 0, limitCount: 0 });
+
+  // --- Missing File Check State ---
+  const [showMissingFileModal, setShowMissingFileModal] = useState(false);
+  const [checkingFile, setCheckingFile] = useState(false);
 
   // ============================================
   // ✅ NEW HELPER FUNCTIONS (Date & Currency)
@@ -619,6 +624,27 @@ const Policies = () => {
     if (displayName && /^\d+-/.test(displayName)) displayName = displayName.replace(/^\d+-/, '');
     return { displayName: displayName || 'Unnamed Policy', fullFileName };
   };
+  // ✅ Check if file exists before opening
+  const handleViewFile = async (fileName) => {
+    if (!fileName) return;
+    setCheckingFile(true);
+
+    const fileUrl = `${API_BASE_URL.replace('/api', '')}/uploads/${encodeURIComponent(fileName)}`;
+
+    try {
+      // Check if file exists (HEAD request)
+      const response = await fetch(fileUrl, { method: 'HEAD' });
+      if (response.ok) {
+        window.open(fileUrl, '_blank'); // File exists, open it
+      } else {
+        setShowMissingFileModal(true); // 404 Not Found
+      }
+    } catch (error) {
+      setShowMissingFileModal(true); // Network error or blocked
+    } finally {
+      setCheckingFile(false);
+    }
+  };
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}><Loader size="lg" text="Loading policies..." /></div>;
 
@@ -913,15 +939,14 @@ const Policies = () => {
                                 <Trash2 size={18} />
                               </button>
                               {fullFileName && !isExcel && (
-                                <a
-                                  href={`${API_BASE_URL.replace('/api', '')}/uploads/${encodeURIComponent(fullFileName)}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ color: '#16a34a', textDecoration: 'none' }}
+                                <button
+                                  onClick={() => handleViewFile(fullFileName)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#16a34a' }}
                                   title="View PDF"
+                                  disabled={checkingFile}
                                 >
                                   <Eye size={18} />
-                                </a>
+                                </button>
                               )}
                             </div>
                           </td>
@@ -1390,6 +1415,58 @@ const Policies = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* 🛡️ SECURITY NOTICE MODAL */}
+      {showMissingFileModal && (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10000, padding: '20px'
+        }} onClick={() => setShowMissingFileModal(false)}>
+          
+          <div style={{
+              backgroundColor: 'white', maxWidth: '480px', width: '100%',
+              borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
+              padding: '40px 30px', textAlign: 'center', border: '1px solid #f3f4f6'
+          }} onClick={(e) => e.stopPropagation()}>
+            
+            {/* Icon */}
+            <div style={{ 
+              width: '80px', height: '80px', background: '#fef2f2', 
+              borderRadius: '50%', display: 'flex', alignItems: 'center', 
+              justifyContent: 'center', margin: '0 auto 24px auto' 
+            }}>
+              <FileText size={40} color="#ef4444" />
+            </div>
+
+            {/* Title */}
+            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#1f2937', marginBottom: '16px' }}>
+              Document Not Available
+            </h2>
+
+            {/* Message */}
+            <p style={{ fontSize: '15px', lineHeight: '1.6', color: '#4b5563', marginBottom: '32px' }}>
+              To maximize your security, your policy PDFs are stored in our database only temporarily. 
+              For enhanced safety, if our system updates or a new version is released, older documents 
+              may be automatically deleted from our database. We strongly recommend that you download 
+              and keep a safe local copy of your original insurance documents.
+            </p>
+
+            {/* Go Back Button */}
+            <button
+              onClick={() => setShowMissingFileModal(false)}
+              style={{
+                background: '#111827', color: 'white', fontSize: '16px', fontWeight: '600',
+                padding: '14px 32px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                width: '100%', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              Go Back
+            </button>
           </div>
         </div>
       )}
