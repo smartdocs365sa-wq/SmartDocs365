@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/controllers/pdfDataController.js
-// ✅ FIXED: Excel Import Emails + Auto ID + Edit Alerts
+// ✅ FIXED: Auto-Generate ID + Force Email on Import
 // ============================================
 
 const PDFDetails = require("../models/pdfDetailsModel");
@@ -8,13 +8,11 @@ const UserSubscription = require("../models/userSubcriptionInfoModel");
 const User = require("../models/userModel");
 const { sendLimitReachedMail, expiredPolicyMail } = require("../utils/repetedUsedFunction");
 
-// Robust Date Parsing (DD/MM/YYYY)
+// Robust Date Parsing
 function parseDateString(dateStr) {
     try {
         if(!dateStr || dateStr === "NA") return null;
-        // Handle YYYY-MM-DD
         if (dateStr.includes('-')) return new Date(dateStr);
-        // Handle DD/MM/YYYY
         if(dateStr.includes('/')) {
             const parts = dateStr.split('/');
             if(parts.length === 3) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
@@ -26,12 +24,12 @@ function parseDateString(dateStr) {
 function formatDate(date) { return date.toLocaleDateString('en-GB'); }
 
 exports.update = async (req, res) => {
-    // ✅ Change 'const' to 'let' so we can assign an ID if missing
+    // 1. Get Data
     let { document_id, file_details, file_name, remark = '' } = req.body;
     const user_id = req.user_id;
     
-    // ✅ 1. EXCEL IMPORT FIX: Generate ID if missing
-    // Excel rows don't have IDs initially, so we create one to ensure they save & trigger emails.
+    // 2. AUTO-ID for Excel Imports
+    // If frontend didn't send an ID, generate one so we can process it like a normal policy
     if (!document_id) {
         document_id = Date.now().toString();
         console.log(`✨ Generated New ID for Import: ${document_id}`);
@@ -42,56 +40,35 @@ exports.update = async (req, res) => {
     try {
         let policy = await PDFDetails.findOne({ document_id, user_id });
         
-        // ---------------------------------------------------------
-        // 2. LIMIT CHECK (Only for NEW Uploads/Policies)
-        // ---------------------------------------------------------
+        // 3. LIMIT CHECK (Only if policy doesn't exist yet)
         if (!policy) {
             const sub = await UserSubscription.findOne({ user_id });
-            
-            // Check if limit reached
             if (sub && sub.pdf_limit > 0 && sub.total_uploads_used >= sub.pdf_limit) {
-                console.log(`⚠️ Limit Reached: ${sub.total_uploads_used}/${sub.pdf_limit}`);
-                
-                // Trigger Email
+                console.log(`⚠️ Limit Reached`);
                 const user = await User.findOne({ user_id });
-                if (user) {
-                    await sendLimitReachedMail(user.email_address, user.first_name, sub.pdf_limit);
-                }
-
-                // BLOCK ACTION
-                return res.status(403).json({ 
-                    success: false, 
-                    message: "⚠️ Upload limit reached! Upgrade your plan." 
-                });
+                if (user) await sendLimitReachedMail(user.email_address, user.first_name, sub.pdf_limit);
+                return res.status(403).json({ success: false, message: "⚠️ Upload limit reached!" });
             }
         }
 
-        // ---------------------------------------------------------
-        // 3. SAVE POLICY (Create or Update)
-        // ---------------------------------------------------------
+        // 4. SAVE (Create or Update)
         if (policy) {
-            // Update existing
             policy.file_details = file_details;
             if (file_name) policy.file_name = file_name;
             policy.remark = remark;
             policy.updated_at = new Date();
             await policy.save();
         } else {
-            // Create new (Excel Import / New PDF)
             policy = await PDFDetails.create({
                 document_id, process_id: document_id, user_id,
                 file_name: file_name || 'Policy Document',
                 file_details, remark, is_active: true,
                 created_at: new Date(), updated_at: new Date()
             });
-            // Increment Counter
             await UserSubscription.updateOne({ user_id }, { $inc: { total_uploads_used: 1 } });
         }
 
-        // ---------------------------------------------------------
-        // 4. EMAIL TRIGGER (Runs for Excel Import AND Edits)
-        // ---------------------------------------------------------
-        // This will check the dates and send an email if the policy is Expired or Expiring Soon
+        // 5. EMAIL TRIGGER (Runs for Excel AND Edits)
         if (file_details && file_details.Policy_expiry_date) {
             const expiryDate = parseDateString(file_details.Policy_expiry_date);
             
@@ -105,33 +82,29 @@ exports.update = async (req, res) => {
                 
                 console.log(`📅 Date Check: ${daysUntilExpiry} days remaining`);
 
-                // ✅ LOGIC: Triggers on specific days OR if already Expired
+                // Send if Expired (negative days) OR specific reminders
                 const futureTriggers = [30, 15, 10, 5, 3, 1, 0];
                 const isExpired = daysUntilExpiry < 0; 
 
-                // Send email if it matches trigger days OR is expired (negative days)
                 if (futureTriggers.includes(daysUntilExpiry) || isExpired) {
                     console.log(`⚡ TRIGGERING EMAIL (Days: ${daysUntilExpiry})`);
                     
-                    const policyHolderEmail = file_details.Policyholder_emailid;
-                    const policyHolderName = file_details.Policyholder_name || "Valued Customer";
-                    const policyNumber = file_details.Insurance_policy_number || "Unknown";
+                    const pEmail = file_details.Policyholder_emailid;
+                    const pName = file_details.Policyholder_name || "Customer";
+                    const pNo = file_details.Insurance_policy_number || "Unknown";
 
-                    // Custom Message
-                    let statusMsg = "";
-                    if (daysUntilExpiry > 0) statusMsg = `Remaining time to expire: ${daysUntilExpiry} Days`;
-                    else if (daysUntilExpiry === 0) statusMsg = `⚠️ EXPIRING TODAY!`;
-                    else statusMsg = `❌ EXPIRED ${Math.abs(daysUntilExpiry)} days ago. RENEW IMMEDIATELY!`;
+                    let msg = daysUntilExpiry > 0 
+                        ? `Expiring in ${daysUntilExpiry} Days` 
+                        : `❌ EXPIRED ${Math.abs(daysUntilExpiry)} days ago. RENEW NOW!`;
 
-                    // 1. Send to Customer
-                    if (policyHolderEmail && policyHolderEmail.includes("@")) {
-                        await expiredPolicyMail(policyHolderEmail, policyHolderName, formatDate(expiryDate), policyNumber, statusMsg);
+                    // Send to Customer
+                    if (pEmail && pEmail.includes("@")) {
+                        await expiredPolicyMail(pEmail, pName, formatDate(expiryDate), pNo, msg);
                     }
-
-                    // 2. Send to Subscriber (Admin/Agent)
-                    const subscriber = await User.findOne({ user_id });
-                    if (subscriber && subscriber.email_address) {
-                        await expiredPolicyMail(subscriber.email_address, `(Copy) ${policyHolderName}`, formatDate(expiryDate), policyNumber, statusMsg);
+                    // Send to Admin
+                    const admin = await User.findOne({ user_id });
+                    if (admin) {
+                        await expiredPolicyMail(admin.email_address, `(Copy) ${pName}`, formatDate(expiryDate), pNo, msg);
                     }
                 }
             }
@@ -140,12 +113,12 @@ exports.update = async (req, res) => {
         res.json({ success: true, message: 'Policy saved', data: policy });
 
     } catch (error) {
-        console.error("❌ Update Error:", error);
+        console.error(error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// ... Exports for other functions ...
+// ... Keep your other exports (list, deleteData, etc.) exactly as they were ...
 exports.list = async (req, res) => { try{ const p=await PDFDetails.find({user_id:req.user_id,is_active:true}).sort({_id:-1}); res.json({success:true,data:p}); }catch(e){res.status(500).json({success:false,message:e.message});} };
 exports.expiryPolicyList = async (req, res) => { try{ const p=await PDFDetails.find({user_id:req.user_id,is_active:true}).sort({_id:-1}); res.json({success:true,data:p}); }catch(e){res.status(500).json({success:false,message:e.message});} };
 exports.deleteData = async (req, res) => { try{ await PDFDetails.findOneAndDelete({document_id:req.params.id,user_id:req.user_id}); res.json({success:true}); }catch(e){res.status(500).json({success:false,message:e.message});} };

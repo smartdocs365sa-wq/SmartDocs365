@@ -384,31 +384,26 @@ const Policies = () => {
   };
 
   // --- Save Handler (Extraction) ---
-  // ✅ REPLACE YOUR ENTIRE handleSaveExtractedData FUNCTION WITH THIS:
+  // ✅ REPLACEMENT FUNCTION: Forces Email Trigger on Excel Import
   const handleSaveExtractedData = async () => {
     const currentPolicy = extractedPolicies[currentPolicyIndex];
     if (!currentPolicy) return;
     
-    // Check if saving is already in progress
+    // Stop double clicks
     if (saving) return;
-
     setSaving(true);
     
     try {
-      if (currentPolicy.document_id) {
-        await policyService.updatePolicy({
-          document_id: currentPolicy.document_id,
+      // ✅ FIX: Force 'updatePolicy' for EVERYTHING (Excel Import & PDF).
+      // We generate a temporary ID for Excel files so they go to the 'update' backend function.
+      // This ensures the Email Logic runs immediately!
+      const docId = currentPolicy.document_id || Date.now().toString();
+
+      await policyService.updatePolicy({
+          document_id: docId,
           file_name: currentPolicy.file_name,
           file_details: currentPolicy.file_details
-        });
-      } else {
-        if (policyService.createPolicy) {
-          await policyService.createPolicy({
-            file_name: currentPolicy.file_name,
-            file_details: currentPolicy.file_details
-          });
-        }
-      }
+      });
 
       // ✅ 1. Increment Success Counter
       savedCountRef.current += 1;
