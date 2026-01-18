@@ -251,29 +251,10 @@ async function sendMailToSupportMail(payload) {
 function addDaysToCurrentDate(days) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().split('T')[0]; }
 function getCurrentDateTime() {
   const now = new Date();
-
-  // 1. Format specifically for IST (India Standard Time)
-  const options = {
-      timeZone: 'Asia/Kolkata',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-      timeZoneName: 'short'
-  };
-
-  // 2. Generate string: "18 January 2026 at 05:27:27 pm IST"
-  // We use .replace(' at ', ', ') to match your exact format request
-  const istString = new Intl.DateTimeFormat('en-IN', options).format(now).replace(' at ', ', ');
-
   return {
-      dateAndTimeString: istString,          // "18 January 2026, 05:27:27 PM IST"
-      isoDate: now,                          // Keep raw Date object for MongoDB sorting
-      date: now.toISOString().split('T')[0], // "2026-01-18"
-      time: now.toTimeString().split(' ')[0] // "17:27:27"
+      dateAndTimeString: now,
+      date: now.toISOString().split('T')[0],
+      time: now.toTimeString().split(' ')[0]
   };
 }
 function namingValidation(str) { return /^[a-zA-Z\s]+$/.test(str); }
