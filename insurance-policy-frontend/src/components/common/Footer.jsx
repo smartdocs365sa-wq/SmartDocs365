@@ -61,9 +61,9 @@ const Footer = () => {
         <div>
           <h4 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem' }}>Contact</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: '#d1d5db' }}>
-            <a href="mailto:superadmin@smartdocs365.com" style={{ ...linkStyle, display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseOver={handleHover} onMouseOut={handleOut}>
+            <a href="mailto:Support@smartdocs365.com" style={{ ...linkStyle, display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseOver={handleHover} onMouseOut={handleOut}>
               <Mail size={16} />
-              <span style={{ fontSize: '0.875rem' }}>superadmin@smartdocs365.com</span>
+              <span style={{ fontSize: '0.875rem' }}>Support@smartdocs365.com</span>
             </a>
             <a href="tel:+918080737271" style={{ ...linkStyle, display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseOver={handleHover} onMouseOut={handleOut}>
               <Phone size={16} />
