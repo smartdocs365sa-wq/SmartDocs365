@@ -245,140 +245,121 @@ const Policies = () => {
     }
   };
 
-  const handleSelectOne = (id) => {
-    if (selectedPolicyIds.includes(id)) {
-      setSelectedPolicyIds(selectedPolicyIds.filter(itemId => itemId !== id));
-    } else {
-      setSelectedPolicyIds([...selectedPolicyIds, id]);
-    }
-  };
-
-  // 1️⃣ Bulk Download Handler
-  const handleBulkDownloadExcel = () => {
-    if (selectedPolicyIds.length === 0) return;
-    const selectedData = policies.filter(p => selectedPolicyIds.includes(p.document_id));
-    
-    const excelRows = selectedData.map(policy => {
-      const details = policy.file_details || {};
-      const row = {};
-      POLICY_FIELDS.forEach(field => {
-        let value = details[field.key];
-        if (field.key.includes('premium')) value = formatCurrencyExact(value);
-        else if (field.key.includes('date')) value = formatDate(value);
-        row[field.label] = value || 'N/A';
-      });
-      row['File Name'] = policy.original_name || policy.file_name;
-      return row;
+// 1️⃣ Bulk Download Handler
+const handleBulkDownloadExcel = () => {
+  if (selectedPolicyIds.length === 0) return;
+  const selectedData = policies.filter(p => selectedPolicyIds.includes(p.document_id));
+  
+  const excelRows = selectedData.map(policy => {
+    const details = policy.file_details || {};
+    const row = {};
+    POLICY_FIELDS.forEach(field => {
+      let value = details[field.key];
+      if (field.key.includes('premium')) value = formatCurrencyExact(value);
+      else if (field.key.includes('date')) value = formatDate(value);
+      row[field.label] = value || 'N/A';
     });
+    row['File Name'] = policy.original_name || policy.file_name;
+    return row;
+  });
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(excelRows);
-    const colWidths = Object.keys(excelRows[0] || {}).map(key => ({ wch: key.length + 10 }));
-    ws['!cols'] = colWidths;
-    XLSX.utils.book_append_sheet(wb, ws, 'Selected Policies');
-    const dateStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Selected_Policies_${dateStr}.xlsx`);
-  };
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(excelRows);
+  const colWidths = Object.keys(excelRows[0] || {}).map(key => ({ wch: key.length + 10 }));
+  ws['!cols'] = colWidths;
+  XLSX.utils.book_append_sheet(wb, ws, 'Selected Policies');
+  const dateStr = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Selected_Policies_${dateStr}.xlsx`);
+};
 
-  // 2️⃣ Bulk Delete Handler (Now separated correctly)
-  const handleBulkDelete = async () => {
-    if (selectedPolicyIds.length === 0) return;
+// 2️⃣ Bulk Delete Handler
+const handleBulkDelete = async () => {
+  if (selectedPolicyIds.length === 0) return;
 
-    const confirmMsg = `⚠️ ARE YOU SURE? ⚠️\n\nYou are about to delete ${selectedPolicyIds.length} policies.\n\nNotes:\n1. This action CANNOT be undone.\n2. Deleting files does NOT restore your upload quota.`;
+  const confirmMsg = `⚠️ ARE YOU SURE? ⚠️\n\nYou are about to delete ${selectedPolicyIds.length} policies.\n\nNotes:\n1. This action CANNOT be undone.\n2. Deleting files does NOT restore your upload quota.`;
+  
+  if (!window.confirm(confirmMsg)) return;
+
+  setBulkDeleting(true);
+
+  try {
+    // Execute all delete requests in parallel
+    const deletePromises = selectedPolicyIds.map(id => policyService.deletePolicy(id));
+    await Promise.all(deletePromises);
+
+    alert(`✅ Successfully deleted ${selectedPolicyIds.length} policies.`);
     
-    if (!window.confirm(confirmMsg)) return;
+    // Clear selection and refresh
+    setSelectedPolicyIds([]);
+    await fetchPoliciesAndStats();
+    await refreshUser();
 
-    setBulkDeleting(true);
+  } catch (error) {
+    console.error("Bulk delete error:", error);
+    alert("❌ Some policies could not be deleted. Please refresh and try again.");
+    fetchPoliciesAndStats(); 
+  } finally {
+    setBulkDeleting(false);
+  }
+};
 
+// --- EXCEL IMPORT HANDLER ---
+const handleImportExcelClick = () => {
+  if (fileInputRef.current) {
+    fileInputRef.current.click();
+  }
+};
+
+const handleExcelFileChange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  setExcelImporting(true);
+  const reader = new FileReader();
+
+  reader.onload = (evt) => {
     try {
-      // Execute all delete requests in parallel
-      const deletePromises = selectedPolicyIds.map(id => policyService.deletePolicy(id));
-      await Promise.all(deletePromises);
+      const bstr = evt.target.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
 
-      alert(`✅ Successfully deleted ${selectedPolicyIds.length} policies.`);
-      
-      // Clear selection and refresh
-      setSelectedPolicyIds([]);
-      await fetchPoliciesAndStats();
-      await refreshUser();
+      if (data.length === 0) {
+        alert("❌ The selected Excel file is empty.");
+        setExcelImporting(false);
+        return;
+      }
+
+      const mappedPolicies = data.map((row, index) => {
+        const mappedDetails = {};
+        POLICY_FIELDS.forEach(field => {
+          const value = row[field.key] || row[field.label] || row[field.label.toLowerCase()] || row[field.label.toUpperCase()];
+          if (value) mappedDetails[field.key] = String(value);
+        });
+        return {
+          original_name: file.name,
+          file_name: `Excel_Import_Row_${index + 1}`,
+          file_details: mappedDetails,
+          is_manual: true
+        };
+      });
+
+      setExtractedPolicies(mappedPolicies);
+      setCurrentPolicyIndex(0);
+      savedCountRef.current = 0;
+      setShowExtractedDataModal(true);
 
     } catch (error) {
-      console.error("Bulk delete error:", error);
-      alert("❌ Some policies could not be deleted. Please refresh and try again.");
-      fetchPoliciesAndStats(); 
+      console.error("Excel Parse Error:", error);
+      alert("❌ Failed to parse Excel file.");
     } finally {
-      setBulkDeleting(false);
+      setExcelImporting(false);
+      e.target.value = null;
     }
   };
-
-  
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(excelRows);
-    const colWidths = Object.keys(excelRows[0] || {}).map(key => ({ wch: key.length + 10 }));
-    ws['!cols'] = colWidths;
-    XLSX.utils.book_append_sheet(wb, ws, 'Selected Policies');
-    const dateStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Selected_Policies_${dateStr}.xlsx`);
-  };
-
-  // --- EXCEL IMPORT HANDLER ---
-  const handleImportExcelClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleExcelFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setExcelImporting(true);
-    const reader = new FileReader();
-
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
-
-        if (data.length === 0) {
-          alert("❌ The selected Excel file is empty.");
-          setExcelImporting(false);
-          return;
-        }
-
-        const mappedPolicies = data.map((row, index) => {
-          const mappedDetails = {};
-          POLICY_FIELDS.forEach(field => {
-            const value = row[field.key] || row[field.label] || row[field.label.toLowerCase()] || row[field.label.toUpperCase()];
-            if (value) mappedDetails[field.key] = String(value);
-          });
-          return {
-            original_name: file.name,
-            file_name: `Excel_Import_Row_${index + 1}`,
-            file_details: mappedDetails,
-            is_manual: true
-          };
-        });
-
-        setExtractedPolicies(mappedPolicies);
-        setCurrentPolicyIndex(0);
-        savedCountRef.current = 0;
-        setShowExtractedDataModal(true);
-
-      } catch (error) {
-        console.error("Excel Parse Error:", error);
-        alert("❌ Failed to parse Excel file.");
-      } finally {
-        setExcelImporting(false);
-        e.target.value = null;
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
+  reader.readAsBinaryString(file);
+};
 
   // --- PDF Upload Handler ---
   const handleFileChange = (e) => {
@@ -1554,5 +1535,5 @@ const Policies = () => {
       )}
     </div>
   );
-
+};
 export default Policies;
