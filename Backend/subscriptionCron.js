@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/subscriptionCron.js
-// ✅ FIXED: Production Schedule (Daily 9 AM) + All Logic
+// ✅ FIXED: Production Schedule (Daily 9 AM)
 // ============================================
 
 const cron = require("node-cron");
@@ -16,15 +16,12 @@ cron.schedule("0 9 * * *", async () => {
   await checkPolicyExpiry();       
 });
 
-// -------------------------------------------------------------
-// 1. SUBSCRIPTION CHECK (Sends ONLY to Subscriber)
-// -------------------------------------------------------------
+// 1. SUBSCRIPTION CHECK
 async function checkSubscriptionExpiry() {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Fetch active subscriptions to check dates
     const activeSubs = await userSubcriptionInfoModel.find({ is_active: true });
 
     for (const sub of activeSubs) {
@@ -39,34 +36,29 @@ async function checkSubscriptionExpiry() {
       const user = await userModel.findOne({ user_id: sub.user_id });
       if (!user) continue;
 
-      // ✅ LOGIC A: HARD STOP (Expired > 45 Days)
-      // Deactivates the user to stop spamming after 45 days of non-renewal
+      // ✅ LOGIC A: STOP if expired > 45 days
       if (daysUntilExpiry < -45) {
           console.log(`🚫 Deactivating Subscription for ${user.email_address} (Expired > 45 days)`);
           await userSubcriptionInfoModel.updateOne({ _id: sub._id }, { is_active: false });
           continue; 
       }
 
-      // ✅ LOGIC B: Upcoming Expiry Warning (15, 10, 5, 3, 1, 0 Days)
+      // ✅ LOGIC B: Upcoming Warnings (15, 10, 5, 3, 1, 0)
       if ([15, 10, 5, 3, 1, 0].includes(daysUntilExpiry)) {
         console.log(`📧 Subscription Warning (${daysUntilExpiry} days left) to: ${user.email_address}`);
         await expiredMail(user.email_address, user.first_name, formatDate(expiryDate));
-        await new Promise(r => setTimeout(r, 2000)); // Prevent rate limiting
       }
       
-      // ✅ LOGIC C: Already Expired - Remind Every 5 Days (-5, -10, ... -45)
+      // ✅ LOGIC C: Expired Reminder (Every 5 Days: -5, -10, ... -45)
       else if (daysUntilExpiry < 0 && Math.abs(daysUntilExpiry) % 5 === 0) {
         console.log(`📧 Subscription Expired Reminder (${Math.abs(daysUntilExpiry)} days ago) to: ${user.email_address}`);
         await expiredMail(user.email_address, user.first_name, formatDate(expiryDate)); 
-        await new Promise(r => setTimeout(r, 2000));
       }
     }
   } catch (error) { console.error("❌ Subscription Check Error:", error); }
 }
 
-// -------------------------------------------------------------
-// 2. POLICY EXPIRY CHECK (Sends to Policyholder & Subscriber)
-// -------------------------------------------------------------
+// 2. POLICY EXPIRY CHECK
 async function checkPolicyExpiry() {
     try {
         const today = new Date();
@@ -86,35 +78,24 @@ async function checkPolicyExpiry() {
             const diffTime = expiryDate - today;
             const daysUntilExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Policy Triggers: Future & Past
             const specificTriggerDays = [30, 15, 10, 5, 3, 1, 0, -1, -3, -7, -30];
             
             if (specificTriggerDays.includes(daysUntilExpiry)) {
-                
                 const policyHolderEmail = policy.file_details.Policyholder_emailid;
                 const policyHolderName = policy.file_details.Policyholder_name || "Valued Customer";
                 const policyNumber = policy.file_details.Insurance_policy_number || "Unknown";
                 
-                let statusMsg = "";
-                if(daysUntilExpiry > 0) {
-                    statusMsg = `Remaining time to expire: ${daysUntilExpiry} Days`;
-                } else if (daysUntilExpiry === 0) {
-                    statusMsg = `⚠️ EXPIRING TODAY!`;
-                } else {
-                    statusMsg = `❌ EXPIRED ${Math.abs(daysUntilExpiry)} days ago. RENEW IMMEDIATELY!`;
-                }
+                let statusMsg = daysUntilExpiry > 0 
+                    ? `Remaining time to expire: ${daysUntilExpiry} Days` 
+                    : `❌ EXPIRED ${Math.abs(daysUntilExpiry)} days ago. RENEW IMMEDIATELY!`;
 
-                // 1. Send to Policy Holder
                 if(isValidEmail(policyHolderEmail)) {
-                    // console.log(`📧 Policy Alert to Customer: ${policyHolderEmail}`);
                     await expiredPolicyMail(policyHolderEmail, policyHolderName, formatDate(expiryDate), policyNumber, statusMsg);
                     await new Promise(r => setTimeout(r, 2000));
                 }
 
-                // 2. Send to Subscriber (Copy)
                 const subscriber = await userModel.findOne({ user_id: policy.user_id });
                 if(subscriber && isValidEmail(subscriber.email_address)) {
-                    // console.log(`📧 Policy Alert Copy to Subscriber: ${subscriber.email_address}`);
                     await expiredPolicyMail(subscriber.email_address, `(Copy) ${policyHolderName}`, formatDate(expiryDate), policyNumber, statusMsg);
                     await new Promise(r => setTimeout(r, 2000));
                 }

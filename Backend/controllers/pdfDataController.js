@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/controllers/pdfDataController.js
-// ✅ FIXED: Limit Email Triggers IMMEDIATELY & SAFELY
+// ✅ FIXED: Immediate Limit Email & Safe Number Checks
 // ============================================
 
 const PDFDetails = require("../models/pdfDetailsModel");
@@ -24,11 +24,10 @@ function parseDateString(dateStr) {
 function formatDate(date) { return date.toLocaleDateString('en-GB'); }
 
 exports.update = async (req, res) => {
-    // 1. Get Data
     let { document_id, file_details, file_name, remark = '' } = req.body;
     const user_id = req.user_id;
     
-    // 2. AUTO-ID for Excel Imports
+    // Auto-ID for Excel Imports
     if (!document_id) {
         document_id = Date.now().toString();
         console.log(`✨ Generated New ID for Import: ${document_id}`);
@@ -40,7 +39,7 @@ exports.update = async (req, res) => {
         let policy = await PDFDetails.findOne({ document_id, user_id });
         
         // ---------------------------------------------------------
-        // 3. BLOCKING CHECK (Prevents exceeding the Limit)
+        // 1. BLOCKING CHECK (Prevents exceeding the Limit)
         // ---------------------------------------------------------
         if (!policy) {
             const sub = await UserSubscription.findOne({ user_id });
@@ -49,13 +48,14 @@ exports.update = async (req, res) => {
             const used = sub ? Number(sub.total_uploads_used) : 0;
             const limit = sub ? Number(sub.pdf_limit) : 0;
 
-            // If already at limit (e.g. 10 >= 10), BLOCK the new upload
+            // If already at limit (e.g. 15 >= 15), BLOCK the new upload & SEND MAIL
             if (sub && limit > 0 && used >= limit) {
                 console.log(`⚠️ Limit Reached (Blocked): ${used}/${limit}`);
                 
-                // Optional: Send reminder again
                 const user = await User.findOne({ user_id });
                 if (user) {
+                    // Send email immediately when they try to exceed limit
+                    console.log(`📧 Sending Limit Reached Mail to: ${user.email_address}`);
                     await sendLimitReachedMail(user.email_address, user.first_name, limit);
                 }
 
@@ -67,17 +67,15 @@ exports.update = async (req, res) => {
         }
 
         // ---------------------------------------------------------
-        // 4. SAVE POLICY & TRIGGER LIMIT EMAIL
+        // 2. SAVE POLICY & TRIGGER LIMIT EMAIL (For the exact moment they hit 100%)
         // ---------------------------------------------------------
         if (policy) {
-            // Update existing policy
             policy.file_details = file_details;
             if (file_name) policy.file_name = file_name;
             policy.remark = remark;
             policy.updated_at = new Date();
             await policy.save();
         } else {
-            // Create new policy
             policy = await PDFDetails.create({
                 document_id, process_id: document_id, user_id,
                 file_name: file_name || 'Policy Document',
@@ -88,17 +86,13 @@ exports.update = async (req, res) => {
             // Increment Counter
             await UserSubscription.updateOne({ user_id }, { $inc: { total_uploads_used: 1 } });
 
-            // ✅ FIX: IMMEDIATE EMAIL CHECK
-            // We fetch the subscription AGAIN to see the new total
+            // ✅ IMMEDIATE EMAIL CHECK (Did we just hit the limit?)
             const updatedSub = await UserSubscription.findOne({ user_id });
-            
-            // Safe Number Conversion for the Check
             const newUsed = Number(updatedSub.total_uploads_used);
             const newLimit = Number(updatedSub.pdf_limit);
             
-            if (updatedSub && newLimit > 0 && newUsed >= newLimit) {
-                console.log(`🚨 HIT LIMIT (${newUsed}/${newLimit}) - Sending Mail Immediately!`);
-                
+            if (updatedSub && newLimit > 0 && newUsed === newLimit) {
+                console.log(`🚨 JUST HIT LIMIT (${newUsed}/${newLimit}) - Sending Mail Immediately!`);
                 const user = await User.findOne({ user_id });
                 if (user) {
                     await sendLimitReachedMail(user.email_address, user.first_name, newLimit);
@@ -107,7 +101,7 @@ exports.update = async (req, res) => {
         }
 
         // ---------------------------------------------------------
-        // 5. EXPIRY EMAIL TRIGGER
+        // 3. EXPIRY EMAIL TRIGGER
         // ---------------------------------------------------------
         if (file_details && file_details.Policy_expiry_date) {
             const expiryDate = parseDateString(file_details.Policy_expiry_date);
@@ -120,14 +114,10 @@ exports.update = async (req, res) => {
                 const diffTime = expiryDate - today;
                 const daysUntilExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
-                // console.log(`📅 Date Check: ${daysUntilExpiry} days remaining`);
-
                 const futureTriggers = [30, 15, 10, 5, 3, 1, 0];
                 const isExpired = daysUntilExpiry < 0; 
 
                 if (futureTriggers.includes(daysUntilExpiry) || isExpired) {
-                    // console.log(`⚡ TRIGGERING EXPIRY EMAIL`);
-                    
                     const pEmail = file_details.Policyholder_emailid;
                     const pName = file_details.Policyholder_name || "Customer";
                     const pNo = file_details.Insurance_policy_number || "Unknown";
@@ -155,7 +145,6 @@ exports.update = async (req, res) => {
     }
 };
 
-// ... Exports ...
 exports.list = async (req, res) => { try{ const p=await PDFDetails.find({user_id:req.user_id,is_active:true}).sort({_id:-1}); res.json({success:true,data:p}); }catch(e){res.status(500).json({success:false,message:e.message});} };
 exports.expiryPolicyList = async (req, res) => { try{ const p=await PDFDetails.find({user_id:req.user_id,is_active:true}).sort({_id:-1}); res.json({success:true,data:p}); }catch(e){res.status(500).json({success:false,message:e.message});} };
 exports.deleteData = async (req, res) => { try{ await PDFDetails.findOneAndDelete({document_id:req.params.id,user_id:req.user_id}); res.json({success:true}); }catch(e){res.status(500).json({success:false,message:e.message});} };
