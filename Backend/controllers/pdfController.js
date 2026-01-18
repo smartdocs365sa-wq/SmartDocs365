@@ -1,13 +1,14 @@
 // ============================================
-// FILE: Backend/controllers/pdfController.js (FIXED)
+// FILE: Backend/controllers/pdfController.js
+// ✅ FIXED: "Limit Reached" Email Triggers Instantly on Increment
 // ============================================
 
 const userModel = require("../models/userModel");
 const pdfDetailsModel = require('../models/pdfDetailsModel');
-// ✅ CRITICAL IMPORT
 const userSubcriptionInfoModel = require('../models/userSubcriptionInfoModel'); 
 const { v4 } = require("uuid");
-const { getCurrentDateTime } = require("../utils/repetedUsedFunction");
+// ✅ Added sendLimitReachedMail to imports
+const { getCurrentDateTime, sendLimitReachedMail } = require("../utils/repetedUsedFunction");
 const { extractDataFromPDF, PageCount, parseDate } = require('../utils/extract');
 const openaiExtract = require('../utils/openai');
 
@@ -17,7 +18,7 @@ const extractData = async (req, res, next) => {
         const user_id = req?.user_id; // Comes from verifyJWT
 
         // =========================================================
-        // 1. CHECK SUBSCRIPTION & LIMITS
+        // 1. CHECK SUBSCRIPTION & LIMITS (Pre-Upload Check)
         // =========================================================
         const userSubscription = await userSubcriptionInfoModel.findOne({ user_id });
 
@@ -37,8 +38,8 @@ const extractData = async (req, res, next) => {
         }
 
         // Check Upload Limit
-        const currentUsed = userSubscription.total_uploads_used || 0;
-        const limit = userSubscription.pdf_limit || 0;
+        const currentUsed = Number(userSubscription.total_uploads_used) || 0;
+        const limit = Number(userSubscription.pdf_limit) || 0;
         const newFilesCount = files?.length || 0;
 
         if ((currentUsed + newFilesCount) > limit) {
@@ -109,18 +110,33 @@ const extractData = async (req, res, next) => {
             await pdfDetailsModel.create(payload);
 
             // =========================================================
-            // 3. ✅ INCREMENT THE COUNTER (The Fix)
+            // 3. ✅ INCREMENT & TRIGGER MAIL (The Fix)
             // =========================================================
-            await userSubcriptionInfoModel.findOneAndUpdate(
+            const updatedSub = await userSubcriptionInfoModel.findOneAndUpdate(
                 { user_id },
                 { $inc: { total_uploads_used: 1 } },
-                { new: true }
+                { new: true } // Returns the document AFTER update
             );
+
+            // 📧 CHECK: Did we just hit the limit?
+            const newUsed = Number(updatedSub.total_uploads_used);
+            const newLimit = Number(updatedSub.pdf_limit);
+
+            if (newLimit > 0 && newUsed === newLimit) {
+                console.log(`🚨 JUST HIT LIMIT (${newUsed}/${newLimit}) - Sending Mail Immediately!`);
+                
+                // Fetch User details for email address
+                const user = await userModel.findOne({ user_id });
+                if (user) {
+                    await sendLimitReachedMail(user.email_address, user.first_name, newLimit);
+                    console.log(`✅ Mail Sent to ${user.email_address}`);
+                }
+            }
         }
 
         // 4. Return Response with Updated Usage
         var data = await pdfDetailsModel.find({process_id});
-        const updatedSub = await userSubcriptionInfoModel.findOne({ user_id });
+        const finalSub = await userSubcriptionInfoModel.findOne({ user_id });
 
         res.status(200).json({
             success: true,
@@ -128,8 +144,8 @@ const extractData = async (req, res, next) => {
             result: data?.length,
             data: data,
             usage: {
-                used: updatedSub.total_uploads_used,
-                limit: updatedSub.pdf_limit
+                used: finalSub.total_uploads_used,
+                limit: finalSub.pdf_limit
             }
         });
 
