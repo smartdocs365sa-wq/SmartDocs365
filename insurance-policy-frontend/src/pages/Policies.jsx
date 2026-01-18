@@ -40,6 +40,9 @@ const Policies = () => {
   // --- Bulk Selection States ---
   const [selectedPolicyIds, setSelectedPolicyIds] = useState([]);
 
+  // --- Bulk Delete State ---
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   // --- Upload & Import States ---
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -267,6 +270,39 @@ const Policies = () => {
       row['File Name'] = policy.original_name || policy.file_name;
       return row;
     });
+
+    // ✅ Bulk Delete Handler
+  const handleBulkDelete = async () => {
+    if (selectedPolicyIds.length === 0) return;
+
+    const confirmMsg = `⚠️ ARE YOU SURE? ⚠️\n\nYou are about to delete ${selectedPolicyIds.length} policies.\n\nNotes:\n1. This action CANNOT be undone.\n2. Deleting files does NOT restore your upload quota.`;
+    
+    if (!window.confirm(confirmMsg)) return;
+
+    setBulkDeleting(true);
+
+    try {
+      // Execute all delete requests in parallel
+      const deletePromises = selectedPolicyIds.map(id => policyService.deletePolicy(id));
+      await Promise.all(deletePromises);
+
+      alert(`✅ Successfully deleted ${selectedPolicyIds.length} policies.`);
+      
+      // Clear selection and refresh
+      setSelectedPolicyIds([]);
+      await fetchPoliciesAndStats();
+      await refreshUser();
+
+    } catch (error) {
+      console.error("Bulk delete error:", error);
+      alert("❌ Some policies could not be deleted. Please refresh and try again.");
+      fetchPoliciesAndStats(); 
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(excelRows);
@@ -652,6 +688,58 @@ const Policies = () => {
 
   return (
     <div className="py-8" style={{ background: '#f9fafb', minHeight: '100vh' }}>
+      {/* 🛑 FLOATING BULK ACTION BAR (Sticky Top) */}
+      {selectedPolicyIds.length > 0 && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          backgroundColor: '#fff', borderBottom: '2px solid #2563eb',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          padding: '1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          animation: 'slideDown 0.3s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+             <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ background: '#2563eb', color: 'white', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem' }}>
+                  {selectedPolicyIds.length}
+                </div>
+                Selected
+             </span>
+             <button 
+                onClick={() => setSelectedPolicyIds([])}
+                style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.875rem' }}
+             >
+                Unselect All
+             </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            {/* Download Excel */}
+            <button 
+               onClick={handleBulkDownloadExcel}
+               className="btn"
+               style={{ background: '#10b981', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+               <FileSpreadsheet size={18} />
+               Download Excel
+            </button>
+
+            {/* Bulk Delete */}
+            <button 
+               onClick={handleBulkDelete}
+               disabled={bulkDeleting}
+               className="btn"
+               style={{ background: '#dc2626', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+               {bulkDeleting ? (
+                 <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />
+               ) : (
+                 <Trash2 size={18} />
+               )}
+               {bulkDeleting ? 'Deleting...' : 'Delete Selected'}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="container">
         
         {/* Header Section */}
@@ -768,21 +856,6 @@ const Policies = () => {
                   </div>
                 </div>
 
-                {selectedPolicyIds.length > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                     <span style={{ fontSize: '0.875rem', color: '#166534', fontWeight: 600, background: '#dcfce7', padding: '0.25rem 0.75rem', borderRadius: '999px' }}>
-                       {selectedPolicyIds.length} Selected
-                     </span>
-                     <button 
-                       className="btn"
-                       onClick={handleBulkDownloadExcel}
-                       style={{ background: '#10b981', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
-                     >
-                       <FileSpreadsheet size={16} />
-                       Download Selected Excel
-                     </button>
-                  </div>
-                )}
             </div>
           </div>
         </div>
