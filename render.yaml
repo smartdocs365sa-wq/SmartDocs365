@@ -19,6 +19,21 @@ services:
         sync: false
       - key: MONGODB_URI
         sync: false
-      - key: JWT_SECRET
+      - key: ACCESS_TOKEN_SECRET
         sync: false
-    # Add any other environment variables your app needs
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: PHONEPE_MERCHANT_ID
+        sync: false
+      - key: PHONEPE_SALT_KEY
+        sync: false
+      - key: PHONEPE_HOST_URL
+        value: https://api.phonepe.com/apis/hermes
+      - key: PHONEPE_SALT_INDEX
+        value: 1
+      - key: PORT
+        value: 3033
+      - key: CORS_ORIGIN
+        value: "*"

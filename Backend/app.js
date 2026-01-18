@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/app.js
-// ✅ COMPLETE: Clean version with Zoho OAuth
+// ✅ COMPLETE: Fixed CORS with regex support for Vercel
 // ============================================
 
 require("dotenv").config();
@@ -24,15 +24,30 @@ require("./subscriptionCron");
 const app = express();
 const PORT = process.env.PORT || 3033;
 
-// Configure CORS options
+// ============================================
+// ✅ FIXED: CORS Configuration with Regex Support
+// ============================================
 const corsOptions = {
   origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin matches any allowed origins (string or regex)
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      }
+      // If it's a regex pattern
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
-      console.log("Blocked by CORS:", origin);
+      console.log("🚫 Blocked by CORS:", origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -148,7 +163,7 @@ app.get('/get-zoho-token', async (req, res) => {
         </head>
         <body>
           <div class="container">
-            <h1>🔐 Zoho Mail Setup</h1>
+            <h1>📧 Zoho Mail Setup</h1>
             <p class="subtitle">Configure Zoho Mail API for SmartDocs365</p>
             
             <div class="step">
@@ -192,7 +207,7 @@ app.get('/get-zoho-token', async (req, res) => {
 
   // Step 2: Exchange code for refresh token
   try {
-    console.log('📧 Exchanging authorization code...');
+    console.log('🔧 Exchanging authorization code...');
     
     const response = await axios.post(
       'https://accounts.zoho.in/oauth/v2/token',
@@ -426,5 +441,5 @@ require("./middleware/db");
 app.listen(PORT, () => {
   console.log("✅ App is listening on port", PORT);
   console.log("✅ Subscription cron jobs loaded");
-  console.log("📧 Zoho OAuth: /get-zoho-token");
+  console.log("🔧 Zoho OAuth: /get-zoho-token");
 });
