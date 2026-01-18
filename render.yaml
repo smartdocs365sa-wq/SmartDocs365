@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: smartdocs365-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: |
+      apt-get update
+      apt-get install -y tesseract-ocr tesseract-ocr-eng libtesseract-dev
+      cd Backend
+      pip install -r requirements.txt
+      npm install
+    startCommand: cd Backend && node app.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+    # Add any other environment variables your app needs
