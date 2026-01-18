@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/subscriptionCron.js
-// ✅ FIXED: Production Schedule (Daily 9 AM)
+// ✅ FIXED: Production Schedule (Daily 9 AM) - Safe for Zoho
 // ============================================
 
 const cron = require("node-cron");
@@ -10,6 +10,7 @@ const userSubcriptionInfoModel = require("./models/userSubcriptionInfoModel");
 const { expiredMail, expiredPolicyMail } = require("./utils/repetedUsedFunction");
 
 // ✅ PRODUCTION SCHEDULE: Runs Daily at 9:00 AM
+// 🛑 DO NOT use "* * * * *" (Every Minute) or Zoho will block you again!
 cron.schedule("0 9 * * *", async () => {
   console.log("🔔 Running daily subscription & policy checks...");
   await checkSubscriptionExpiry(); 
@@ -47,12 +48,15 @@ async function checkSubscriptionExpiry() {
       if ([15, 10, 5, 3, 1, 0].includes(daysUntilExpiry)) {
         console.log(`📧 Subscription Warning (${daysUntilExpiry} days left) to: ${user.email_address}`);
         await expiredMail(user.email_address, user.first_name, formatDate(expiryDate));
+        // Add delay to prevent rate limits
+        await new Promise(r => setTimeout(r, 2000)); 
       }
       
       // ✅ LOGIC C: Expired Reminder (Every 5 Days: -5, -10, ... -45)
       else if (daysUntilExpiry < 0 && Math.abs(daysUntilExpiry) % 5 === 0) {
         console.log(`📧 Subscription Expired Reminder (${Math.abs(daysUntilExpiry)} days ago) to: ${user.email_address}`);
         await expiredMail(user.email_address, user.first_name, formatDate(expiryDate)); 
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
   } catch (error) { console.error("❌ Subscription Check Error:", error); }
@@ -81,6 +85,7 @@ async function checkPolicyExpiry() {
             const specificTriggerDays = [30, 15, 10, 5, 3, 1, 0, -1, -3, -7, -30];
             
             if (specificTriggerDays.includes(daysUntilExpiry)) {
+                
                 const policyHolderEmail = policy.file_details.Policyholder_emailid;
                 const policyHolderName = policy.file_details.Policyholder_name || "Valued Customer";
                 const policyNumber = policy.file_details.Insurance_policy_number || "Unknown";
@@ -88,6 +93,8 @@ async function checkPolicyExpiry() {
                 let statusMsg = daysUntilExpiry > 0 
                     ? `Remaining time to expire: ${daysUntilExpiry} Days` 
                     : `❌ EXPIRED ${Math.abs(daysUntilExpiry)} days ago. RENEW IMMEDIATELY!`;
+
+                if(daysUntilExpiry === 0) statusMsg = `⚠️ EXPIRING TODAY!`;
 
                 if(isValidEmail(policyHolderEmail)) {
                     await expiredPolicyMail(policyHolderEmail, policyHolderName, formatDate(expiryDate), policyNumber, statusMsg);
