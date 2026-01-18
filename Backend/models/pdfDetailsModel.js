@@ -1,3 +1,8 @@
+// ============================================
+// FILE: Backend/models/pdfDetailsModel.js
+// ✅ FIXED: Added 'is_manual' to Schema so Excel Badge works
+// ============================================
+
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
@@ -19,7 +24,7 @@ const pdfDetailsSchema = new Schema(
       type:String, // This will store the FULL filename with timestamp: "1765866950804-Suresh.pdf"
     },
     original_name:{
-      type:String, // ✅ NEW: Store original name without timestamp: "Suresh.pdf"
+      type:String, // ✅ Store original name without timestamp: "Suresh.pdf"
     },
     file_path: {
       type: String,
@@ -51,11 +56,18 @@ const pdfDetailsSchema = new Schema(
       type:String,
       default:""
     },
+    // 👇 THIS IS THE FIX: Allows the database to remember it's an Excel file
+    is_manual: { 
+        type: Boolean, 
+        default: false 
+    },
     created_at: {
-      type: Date,
+        type: Date,
+        default: Date.now // Added default for safety
     },
     updated_at: {
-      type: Date,
+        type: Date,
+        default: Date.now // Added default for safety
     },
     export_data:{
       type:Boolean,
@@ -64,4 +76,5 @@ const pdfDetailsSchema = new Schema(
   },
   { versionKey: false }
 );
+
 module.exports = mongoose.model("pdf-details", pdfDetailsSchema);
