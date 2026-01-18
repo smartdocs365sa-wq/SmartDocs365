@@ -253,6 +253,7 @@ const Policies = () => {
     }
   };
 
+  // 1️⃣ Bulk Download Handler
   const handleBulkDownloadExcel = () => {
     if (selectedPolicyIds.length === 0) return;
     const selectedData = policies.filter(p => selectedPolicyIds.includes(p.document_id));
@@ -262,7 +263,6 @@ const Policies = () => {
       const row = {};
       POLICY_FIELDS.forEach(field => {
         let value = details[field.key];
-        // Use exact formatter for excel text
         if (field.key.includes('premium')) value = formatCurrencyExact(value);
         else if (field.key.includes('date')) value = formatDate(value);
         row[field.label] = value || 'N/A';
@@ -271,7 +271,16 @@ const Policies = () => {
       return row;
     });
 
-    // ✅ Bulk Delete Handler
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelRows);
+    const colWidths = Object.keys(excelRows[0] || {}).map(key => ({ wch: key.length + 10 }));
+    ws['!cols'] = colWidths;
+    XLSX.utils.book_append_sheet(wb, ws, 'Selected Policies');
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Selected_Policies_${dateStr}.xlsx`);
+  };
+
+  // 2️⃣ Bulk Delete Handler (Now separated correctly)
   const handleBulkDelete = async () => {
     if (selectedPolicyIds.length === 0) return;
 
@@ -1545,6 +1554,5 @@ const Policies = () => {
       )}
     </div>
   );
-};
 
 export default Policies;
