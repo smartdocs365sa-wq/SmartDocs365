@@ -249,7 +249,14 @@ async function sendMailToSupportMail(payload) {
 
 // Helper Exports
 function addDaysToCurrentDate(days) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().split('T')[0]; }
-function getCurrentDateTime() { return {}; }
+function getCurrentDateTime() {
+  const now = new Date();
+  return {
+      dateAndTimeString: now,
+      date: now.toISOString().split('T')[0],
+      time: now.toTimeString().split(' ')[0]
+  };
+}
 function namingValidation(str) { return /^[a-zA-Z\s]+$/.test(str); }
 function isEmailValid(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 function getOffset(currentPage = 1, listPerPage) { return (currentPage - 1) * listPerPage; }
