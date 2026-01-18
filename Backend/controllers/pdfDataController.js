@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/controllers/pdfDataController.js
-// ✅ FIXED: Excel = Unlimited Uploads + Excel Badge + Email Alerts
+// ✅ FIXED: Mail Logic for Limit Reached (14->15 and 15/15 blocked)
 // ============================================
 
 const PDFDetails = require("../models/pdfDetailsModel");
@@ -52,9 +52,13 @@ exports.update = async (req, res) => {
             if (sub && limit > 0 && used >= limit) {
                 console.log(`⚠️ Limit Reached (Blocked): ${used}/${limit}`);
                 
+                // ✅ MAIL FIX: Trigger email when user tries to upload BUT is blocked
                 const user = await User.findOne({ user_id });
                 if (user) {
+                    console.log(`📧 Sending 'Limit Reached' mail to: ${user.email_address}`);
                     await sendLimitReachedMail(user.email_address, user.first_name, limit);
+                } else {
+                    console.log("❌ User not found for email trigger");
                 }
 
                 return res.status(403).json({ 
@@ -88,17 +92,23 @@ exports.update = async (req, res) => {
             
             // ✅ ONLY Increment Counter if it is NOT Excel/Manual
             if (!is_manual) {
-                await UserSubscription.updateOne({ user_id }, { $inc: { total_uploads_used: 1 } });
+                // ✅ MAIL FIX: Use findOneAndUpdate with { new: true } to get exact new count
+                const updatedSub = await UserSubscription.findOneAndUpdate(
+                    { user_id }, 
+                    { $inc: { total_uploads_used: 1 } },
+                    { new: true } 
+                );
 
-                // Check for Immediate Limit Hit (100%)
-                const updatedSub = await UserSubscription.findOne({ user_id });
-                const newUsed = Number(updatedSub.total_uploads_used);
-                const newLimit = Number(updatedSub.pdf_limit);
+                const newUsed = updatedSub ? Number(updatedSub.total_uploads_used) : 0;
+                const newLimit = updatedSub ? Number(updatedSub.pdf_limit) : 0;
                 
+                // Check if we JUST hit the limit (e.g. 14 -> 15)
                 if (updatedSub && newLimit > 0 && newUsed === newLimit) {
                     console.log(`🚨 JUST HIT LIMIT (${newUsed}/${newLimit}) - Sending Mail Immediately!`);
+                    
                     const user = await User.findOne({ user_id });
                     if (user) {
+                        console.log(`📧 Sending 'Limit Hit' mail to: ${user.email_address}`);
                         await sendLimitReachedMail(user.email_address, user.first_name, newLimit);
                     }
                 }

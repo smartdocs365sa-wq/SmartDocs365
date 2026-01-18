@@ -252,7 +252,7 @@ const Policies = () => {
     }
   };
 
-
+  
 // 1️⃣ Bulk Download Handler
 const handleBulkDownloadExcel = () => {
   if (selectedPolicyIds.length === 0) return;
