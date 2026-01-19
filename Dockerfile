@@ -17,8 +17,8 @@ WORKDIR /app/Backend
 COPY Backend/package*.json ./
 COPY Backend/requirements.txt ./
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Install Python dependencies (bypass system package restriction)
+RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
 
 # Install Node dependencies
 RUN npm install --production
