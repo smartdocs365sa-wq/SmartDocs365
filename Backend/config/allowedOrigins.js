@@ -8,7 +8,8 @@ const allowedOrigins = [
   'http://localhost:3033',
   'https://smartdocs365.com',
   'https://www.smartdocs365.com',
-  'https://smartdocs365-backend.onrender.com',
+  'https://smartdocs365-backend.onrender.com', // Old backend (keep for now)
+  'https://smartdocs365-backend-docker.onrender.com', // ✅ NEW Docker backend
   'https://smart-docs365.vercel.app',
   
   // ✅ This regex allows ALL Vercel preview URLs

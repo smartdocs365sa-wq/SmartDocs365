@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/app.js
-// ✅ COMPLETE: Fixed CORS with regex support for Vercel
+// ✅ COMPLETE: Updated for Docker backend
 // ============================================
 
 require("dotenv").config();
@@ -191,7 +191,7 @@ app.get('/get-zoho-token', async (req, res) => {
             </div>
             
             <center>
-              <a href="https://accounts.zoho.in/oauth/v2/auth?scope=ZohoMail.messages.CREATE,ZohoMail.accounts.READ&client_id=1000.TJUP8N9JKBHXAA1Q8FOSLB5DAW8T3Q&response_type=code&access_type=offline&redirect_uri=https://smartdocs365-backend.onrender.com/get-zoho-token" class="btn">
+              <a href="https://accounts.zoho.in/oauth/v2/auth?scope=ZohoMail.messages.CREATE,ZohoMail.accounts.READ&client_id=1000.TJUP8N9JKBHXAA1Q8FOSLB5DAW8T3Q&response_type=code&access_type=offline&redirect_uri=https://smartdocs365-backend-docker.onrender.com/get-zoho-token" class="btn">
                 🚀 Authorize Zoho Mail
               </a>
             </center>
@@ -217,7 +217,7 @@ app.get('/get-zoho-token', async (req, res) => {
           code: code,
           client_id: '1000.TJUP8N9JKBHXAA1Q8FOSLB5DAW8T3Q',
           client_secret: 'b7786316b5ef771e27f0c7956fb7b3d4524b05a5e3',
-          redirect_uri: 'https://smartdocs365-backend.onrender.com/get-zoho-token',
+          redirect_uri: 'https://smartdocs365-backend-docker.onrender.com/get-zoho-token',
           grant_type: 'authorization_code'
         }
       }
