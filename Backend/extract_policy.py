@@ -2,120 +2,158 @@ import sys
 import json
 import os
 import re
-import fitz  # PyMuPDF
-from PIL import Image, ImageOps
+import fitz
+from PIL import Image
 import pytesseract
 import requests
-import gc  # Garbage Collector for memory management
 
-# ---------------------------------------------------------
-# CONFIGURATION
-# ---------------------------------------------------------
 API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Tesseract Config: 
-# --oem 3: Default engine
-# --psm 6: Assume a single uniform block of text
-TESS_CONFIG = r'--oem 3 --psm 6'
+def is_tnc_page(text):
+    """Detect terms & conditions pages to skip - BE VERY STRICT"""
+    text_lower = text.lower()
+    
+    # Only skip if page is CLEARLY just T&C with no useful data
+    tnc_phrases = [
+        "terms and conditions", "general exclusions", "policy wordings",
+        "grievance redressal mechanism", "customer information sheet"
+    ]
+    
+    # Must have multiple T&C indicators
+    tnc_count = sum(1 for phrase in tnc_phrases if phrase in text_lower)
+    
+    # Check if page has useful data
+    has_policy_num = re.search(r'\d{10,}', text)
+    has_premium = re.search(r'(?:premium|amount).*?\d{3,}', text_lower)
+    has_names = re.search(r'(?:name|holder|insured)[:\-\s]+[A-Z][a-z]+', text)
+    
+    # Only skip if clearly T&C AND no useful data
+    return tnc_count >= 2 and not (has_policy_num or has_premium or has_names)
 
-def clean_text(text):
-    return re.sub(r'[^\x00-\x7F]+', ' ', text).strip()
-
-def preprocess_image(pix):
-    """Convert to grayscale to save RAM."""
-    try:
-        # Create image from bytes
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-        # Convert to grayscale (L) - crucial for saving memory
-        img = img.convert('L')
-        # Simple contrast boost
-        img = ImageOps.autocontrast(img)
-        return img
-    except Exception as e:
-        sys.stderr.write(f"⚠️ Image prep error: {e}\n")
-        return None
-
-def extract_text_server_safe(pdf_path):
-    """
-    Memory-Optimized Extraction for Render Free Tier (512MB RAM Limit)
-    """
+def extract_text_from_pdf(pdf_path):
+    """Extract text with OCR fallback"""
     doc = fitz.open(pdf_path)
-    extracted_pages = []
+    pages = []
     
-    sys.stderr.write(f"🔧 Starting SERVER-SAFE extraction for {os.path.basename(pdf_path)}\n")
-    
-    # Limit to first 5 pages
-    max_pages = 5
-    
-    for i in range(min(max_pages, len(doc))):
-        page = doc[i]
-        page_num = i + 1
+    for page_num, page in enumerate(doc):
+        # Try native extraction first
+        text = page.get_text()
         
-        # 1. Try standard text extraction
-        text = page.get_text().strip()
-        
-        # 2. If text is sparse (<200 chars), use OCR
-        if len(text) < 200:
-            sys.stderr.write(f"   PAGE {page_num}: Running OCR (Optimized Mode)...\n")
-            
+        # Use OCR if text is too short
+        if len(text.strip()) < 100:
             try:
-                # CRITICAL CHANGE: dpi=150 (300 DPI uses 4x more RAM and crashes Render)
-                pix = page.get_pixmap(dpi=150)
-                
-                img = preprocess_image(pix)
-                if img:
-                    # Run Tesseract
-                    ocr_text = pytesseract.image_to_string(img, config=TESS_CONFIG)
-                    
-                    if len(ocr_text) > len(text):
-                        text = ocr_text
-                        sys.stderr.write(f"   ✅ PAGE {page_num}: OCR Success ({len(text)} chars)\n")
-                    
-                    # FREE MEMORY IMMEDIATELY
-                    del img
-                    del pix
-                
+                pix = page.get_pixmap(dpi=300)
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                ocr_text = pytesseract.image_to_string(img)
+                if len(ocr_text.strip()) > len(text.strip()):
+                    text = ocr_text
+                    sys.stderr.write(f"📸 Page {page_num+1} used OCR\n")
             except Exception as e:
-                sys.stderr.write(f"   ❌ PAGE {page_num}: OCR Skipped ({str(e)[:50]})\n")
-        else:
-            sys.stderr.write(f"   ✅ PAGE {page_num}: Native Text ({len(text)} chars)\n")
-            
-        extracted_pages.append(text)
+                sys.stderr.write(f"⚠️ OCR failed for page {page_num+1}: {e}\n")
         
-        # Force Python to release memory back to OS
-        gc.collect()
-
+        pages.append(text)
+    
     doc.close()
-    return extracted_pages
+    return pages
 
-def get_gpt_extraction(text_data):
-    """Send to GPT-4o-mini"""
-    prompt = """
-    Extract these 21 fields from the insurance policy. Return JSON only. Use "NA" if missing.
-    Fields:
-    - Insurance_company_name
-    - Insurance_plan_name
-    - Insurance_policy_type
-    - Insurance_policy_number
-    - Vehicle_registration_number
-    - Engine_number
-    - Chassis_number
-    - Policyholder_name
-    - Policyholder_address
-    - Policyholder_phone_number
-    - Policyholder_emailid
-    - Intermediary_code
-    - Intermediary_name
-    - Intermediary_phone_number
-    - Intermediary_emailid
-    - Total_premium_paid
-    - Own_damage_premium
-    - Base_premium
-    - Policy_start_date
-    - Policy_expiry_date
-    - Policy_issuance_date
-    """
+GPT_PROMPT = """You are an expert at extracting data from Indian insurance policy documents.
 
+Extract EXACTLY these 21 fields. Return ONLY valid JSON with these exact keys:
+
+{
+  "Insurance_company_name": "",
+  "Insurance_plan_name": "",
+  "Insurance_policy_type": "",
+  "Insurance_policy_number": "",
+  "Vehicle_registration_number": "",
+  "Engine_number": "",
+  "Chassis_number": "",
+  "Policyholder_name": "",
+  "Policyholder_address": "",
+  "Policyholder_phone_number": "",
+  "Policyholder_emailid": "",
+  "Intermediary_code": "",
+  "Intermediary_name": "",
+  "Intermediary_phone_number": "",
+  "Intermediary_emailid": "",
+  "Total_premium_paid": "",
+  "Own_damage_premium": "",
+  "Base_premium": "",
+  "Policy_start_date": "",
+  "Policy_expiry_date": "",
+  "Policy_issuance_date": ""
+}
+
+CRITICAL RULES:
+1. Look for data ANYWHERE in the document - in paragraphs, tables, headers, footers
+2. Return "NA" ONLY if truly not found after careful search
+3. Normalize synonyms:
+   - Agent/Broker/POS/Agency/Advisor → Intermediary fields
+   - Proposer/Insured/Owner → Policyholder fields  
+   - Product/Cover/Plan Name → Plan Name
+   - Registration No./Regn./Reg. → Vehicle Registration
+4. For premiums:
+   - Total_premium_paid = Final amount INCLUDING all taxes (look for "Total", "Gross Premium", "Amount Payable")
+   - Base_premium = Amount BEFORE taxes (look for "Base", "Net Premium", "Basic Premium")
+   - Own_damage_premium = OD premium if shown separately
+5. Dates: Use DD/MM/YYYY or DD-MM-YYYY format
+6. Extract clean values - remove labels, prefixes, extra spaces
+7. For health insurance: Vehicle/Engine/Chassis fields will be "NA"
+8. Return ONLY the JSON object, no explanations"""
+
+def process_policy(pdf_path):
+    sys.stderr.write(f"\n📄 Processing: {pdf_path}\n")
+    sys.stderr.write("="*60 + "\n")
+    
+    # Extract all pages
+    pages = extract_text_from_pdf(pdf_path)
+    sys.stderr.write(f"📄 Total pages: {len(pages)}\n\n")
+    
+    # ✅ IMPROVED: Keep first 10 pages OR all pages if < 10
+    # Skip only obvious T&C pages
+    relevant_pages = []
+    max_pages = min(10, len(pages))
+    
+    for i in range(len(pages)):
+        page_text = pages[i]
+        page_num = i + 1
+        word_count = len(page_text.split())
+        
+        # Skip only if clearly T&C and we have enough pages already
+        if is_tnc_page(page_text) and len(relevant_pages) >= 3:
+            sys.stderr.write(f"⏭️  Page {page_num}: Skipped (T&C) - {word_count} words\n")
+            continue
+        
+        # Keep page if it has reasonable content
+        if word_count > 20 or i < 3:  # Always keep first 3 pages
+            sys.stderr.write(f"✅ Page {page_num}: Kept - {word_count} words\n")
+            relevant_pages.append(page_text)
+        else:
+            sys.stderr.write(f"⏭️  Page {page_num}: Skipped (too short) - {word_count} words\n")
+        
+        # Stop after max_pages to avoid token limits
+        if len(relevant_pages) >= max_pages:
+            break
+    
+    # Combine pages
+    combined_text = "\n\n--- PAGE BREAK ---\n\n".join(relevant_pages)
+    word_count = len(combined_text.split())
+    
+    sys.stderr.write(f"\n📊 Using {len(relevant_pages)}/{len(pages)} pages ({word_count} words)\n")
+    sys.stderr.write("="*60 + "\n")
+    
+    # Truncate if too long
+    if word_count > 12000:
+        words = combined_text.split()
+        combined_text = " ".join(words[:12000])
+        sys.stderr.write(f"⚠️ Truncated to 12k words for API\n")
+    
+    # Show preview of text being sent
+    sys.stderr.write(f"\n📝 Text preview (first 300 chars):\n{combined_text[:300]}\n\n")
+    
+    # Call GPT API
+    sys.stderr.write("🤖 Calling OpenAI API...\n")
+    
     try:
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
@@ -126,20 +164,36 @@ def get_gpt_extraction(text_data):
             json={
                 "model": "gpt-4o-mini",
                 "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": text_data}
+                    {"role": "system", "content": GPT_PROMPT},
+                    {"role": "user", "content": combined_text}
                 ],
                 "response_format": {"type": "json_object"},
-                "temperature": 0.0
+                "temperature": 0,
+                "max_tokens": 1000
             },
-            timeout=45
+            timeout=60
         )
         
         if response.status_code == 200:
-            return json.loads(response.json()['choices'][0]['message']['content'])
-        return {}
+            result = response.json()
+            extracted = json.loads(result['choices'][0]['message']['content'])
+            
+            # Count non-NA fields
+            non_na_count = sum(1 for v in extracted.values() if v and v != 'NA' and str(v).strip() != '')
+            
+            sys.stderr.write("✅ Extraction successful!\n")
+            sys.stderr.write(f"📋 Fields extracted: {non_na_count}/21\n")
+            
+            if non_na_count == 0:
+                sys.stderr.write("⚠️ WARNING: All fields are NA - check if PDF is readable\n")
+            
+            return extracted
+        else:
+            sys.stderr.write(f"❌ API Error {response.status_code}: {response.text}\n")
+            return {}
+            
     except Exception as e:
-        sys.stderr.write(f"❌ API Error: {str(e)}\n")
+        sys.stderr.write(f"❌ Error: {str(e)}\n")
         return {}
 
 def main():
@@ -153,33 +207,22 @@ def main():
         "Policy_start_date", "Policy_expiry_date", "Policy_issuance_date"
     ]
     
-    final_output = {k: "NA" for k in fields}
-
-    if len(sys.argv) < 2:
-        print(json.dumps(final_output))
+    if len(sys.argv) < 2 or not os.path.exists(sys.argv[1]):
+        sys.stderr.write("❌ No valid PDF file provided\n")
+        empty = {field: "NA" for field in fields}
+        print(json.dumps(empty))
         sys.exit(1)
-
-    pdf_path = sys.argv[1]
     
-    # 1. Extract Text (Server Safe Mode)
-    pages = extract_text_server_safe(pdf_path)
+    result = process_policy(sys.argv[1])
     
-    if not pages:
-        print(json.dumps(final_output))
-        sys.exit(1)
-
-    # 2. Prepare Text
-    full_text = "\n".join(pages)[:12000] # Limit size for API
-
-    # 3. Extract Data
-    extracted = get_gpt_extraction(full_text)
+    # Ensure all fields present
+    output = {}
+    for field in fields:
+        output[field] = result.get(field, "NA")
     
-    # 4. Merge
-    for key in final_output:
-        if key in extracted and str(extracted[key]).lower() not in ["na", "none", ""]:
-            final_output[key] = extracted[key]
-
-    print(json.dumps(final_output, indent=2))
+    # Output to stdout
+    print(json.dumps(output, indent=2))
+    sys.stderr.write("\n✅ Processing complete!\n")
 
 if __name__ == "__main__":
     main()
