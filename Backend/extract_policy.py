@@ -6,55 +6,84 @@ import fitz
 from PIL import Image
 import pytesseract
 import requests
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+import io
 
 API_KEY = os.getenv("OPENAI_API_KEY")
 
 def is_tnc_page(text):
-    """Detect terms & conditions pages to skip - BE VERY STRICT"""
+    """Detect terms & conditions pages to skip"""
     text_lower = text.lower()
-    
-    # Only skip if page is CLEARLY just T&C with no useful data
     tnc_phrases = [
         "terms and conditions", "general exclusions", "policy wordings",
         "grievance redressal mechanism", "customer information sheet"
     ]
-    
-    # Must have multiple T&C indicators
     tnc_count = sum(1 for phrase in tnc_phrases if phrase in text_lower)
-    
-    # Check if page has useful data
     has_policy_num = re.search(r'\d{10,}', text)
     has_premium = re.search(r'(?:premium|amount).*?\d{3,}', text_lower)
     has_names = re.search(r'(?:name|holder|insured)[:\-\s]+[A-Z][a-z]+', text)
-    
-    # Only skip if clearly T&C AND no useful data
     return tnc_count >= 2 and not (has_policy_num or has_premium or has_names)
 
+def ocr_page_fast(pix, page_num):
+    """Fast OCR with timeout"""
+    try:
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        # ⚡ Use fast PSM mode and limit to English
+        custom_config = r'--oem 3 --psm 6 -l eng'
+        text = pytesseract.image_to_string(img, config=custom_config)
+        return text
+    except Exception as e:
+        sys.stderr.write(f"⚠️ OCR failed for page {page_num}: {str(e)[:80]}\n")
+        return ""
+
 def extract_text_from_pdf(pdf_path):
-    """Extract text with OCR fallback"""
+    """SMART extraction - detects if OCR is needed"""
     doc = fitz.open(pdf_path)
     pages = []
+    total_text_length = 0
     
+    # ⚡ STEP 1: Quick scan first 2 pages to detect if OCR is needed
+    needs_ocr = False
+    for i in range(min(2, len(doc))):
+        test_text = doc[i].get_text()
+        total_text_length += len(test_text.strip())
+    
+    # If first 2 pages have < 200 chars total, it's likely scanned
+    needs_ocr = total_text_length < 200
+    
+    if needs_ocr:
+        sys.stderr.write("🔍 Detected SCANNED PDF - Using OCR mode\n")
+    else:
+        sys.stderr.write("📝 Detected TEXT PDF - Using fast extraction\n")
+    
+    # ⚡ STEP 2: Process based on detection
     for page_num, page in enumerate(doc):
-        # Try native extraction first
         text = page.get_text()
         
-        # Use OCR if text is too short
-        if len(text.strip()) < 100:
+        # Only do OCR if needed AND page is short
+        if needs_ocr and len(text.strip()) < 100:
             try:
-                pix = page.get_pixmap(dpi=300)
-                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                ocr_text = pytesseract.image_to_string(img)
-                if len(ocr_text.strip()) > len(text.strip()):
-                    text = ocr_text
-                    sys.stderr.write(f"📸 Page {page_num+1} used OCR\n")
+                # ⚡ Lower DPI for speed, only for important pages
+                if page_num < 5:  # Only OCR first 5 pages
+                    pix = page.get_pixmap(dpi=200)  # ⚡ Balanced DPI
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(ocr_page_fast, pix, page_num + 1)
+                        try:
+                            ocr_text = future.result(timeout=10)  # ⚡ 10 sec max per page
+                            if len(ocr_text.strip()) > len(text.strip()):
+                                text = ocr_text
+                                sys.stderr.write(f"📸 Page {page_num+1}: OCR extracted {len(ocr_text.split())} words\n")
+                        except TimeoutError:
+                            sys.stderr.write(f"⏱️ Page {page_num+1}: OCR timeout, using native text\n")
+                else:
+                    sys.stderr.write(f"⏭️ Page {page_num+1}: Skipped OCR (beyond page 5)\n")
             except Exception as e:
-                sys.stderr.write(f"⚠️ OCR failed for page {page_num+1}: {e}\n")
+                sys.stderr.write(f"⚠️ Page {page_num+1}: OCR error, using native text\n")
         
         pages.append(text)
     
     doc.close()
-    return pages
+    return pages, needs_ocr
 
 GPT_PROMPT = """You are an expert at extracting data from Indian insurance policy documents.
 
@@ -93,8 +122,8 @@ CRITICAL RULES:
    - Product/Cover/Plan Name → Plan Name
    - Registration No./Regn./Reg. → Vehicle Registration
 4. For premiums:
-   - Total_premium_paid = Final amount INCLUDING all taxes (look for "Total", "Gross Premium", "Amount Payable")
-   - Base_premium = Amount BEFORE taxes (look for "Base", "Net Premium", "Basic Premium")
+   - Total_premium_paid = Final amount INCLUDING all taxes
+   - Base_premium = Amount BEFORE taxes
    - Own_damage_premium = OD premium if shown separately
 5. Dates: Use DD/MM/YYYY or DD-MM-YYYY format
 6. Extract clean values - remove labels, prefixes, extra spaces
@@ -105,35 +134,30 @@ def process_policy(pdf_path):
     sys.stderr.write(f"\n📄 Processing: {pdf_path}\n")
     sys.stderr.write("="*60 + "\n")
     
-    # Extract all pages
-    pages = extract_text_from_pdf(pdf_path)
+    # Extract pages with smart OCR detection
+    pages, needs_ocr = extract_text_from_pdf(pdf_path)
     sys.stderr.write(f"📄 Total pages: {len(pages)}\n\n")
     
-    # ✅ IMPROVED: Keep first 10 pages OR all pages if < 10
-    # Skip only obvious T&C pages
+    # ⚡ Keep first 6 pages for scanned, 8 for text PDFs
+    max_pages = 6 if needs_ocr else 8
     relevant_pages = []
-    max_pages = min(10, len(pages))
     
-    for i in range(len(pages)):
+    for i in range(min(max_pages, len(pages))):
         page_text = pages[i]
         page_num = i + 1
         word_count = len(page_text.split())
         
-        # Skip only if clearly T&C and we have enough pages already
+        # Skip only obvious T&C pages
         if is_tnc_page(page_text) and len(relevant_pages) >= 3:
             sys.stderr.write(f"⏭️  Page {page_num}: Skipped (T&C) - {word_count} words\n")
             continue
         
-        # Keep page if it has reasonable content
+        # Keep pages with reasonable content
         if word_count > 20 or i < 3:  # Always keep first 3 pages
             sys.stderr.write(f"✅ Page {page_num}: Kept - {word_count} words\n")
             relevant_pages.append(page_text)
         else:
             sys.stderr.write(f"⏭️  Page {page_num}: Skipped (too short) - {word_count} words\n")
-        
-        # Stop after max_pages to avoid token limits
-        if len(relevant_pages) >= max_pages:
-            break
     
     # Combine pages
     combined_text = "\n\n--- PAGE BREAK ---\n\n".join(relevant_pages)
@@ -143,13 +167,13 @@ def process_policy(pdf_path):
     sys.stderr.write("="*60 + "\n")
     
     # Truncate if too long
-    if word_count > 12000:
+    if word_count > 10000:
         words = combined_text.split()
-        combined_text = " ".join(words[:12000])
-        sys.stderr.write(f"⚠️ Truncated to 12k words for API\n")
+        combined_text = " ".join(words[:10000])
+        sys.stderr.write(f"⚠️ Truncated to 10k words for API\n")
     
-    # Show preview of text being sent
-    sys.stderr.write(f"\n📝 Text preview (first 300 chars):\n{combined_text[:300]}\n\n")
+    # Show preview
+    sys.stderr.write(f"\n📝 Text preview (first 200 chars):\n{combined_text[:200]}\n\n")
     
     # Call GPT API
     sys.stderr.write("🤖 Calling OpenAI API...\n")
@@ -169,9 +193,9 @@ def process_policy(pdf_path):
                 ],
                 "response_format": {"type": "json_object"},
                 "temperature": 0,
-                "max_tokens": 1000
+                "max_tokens": 1500
             },
-            timeout=60
+            timeout=40
         )
         
         if response.status_code == 200:
@@ -185,15 +209,15 @@ def process_policy(pdf_path):
             sys.stderr.write(f"📋 Fields extracted: {non_na_count}/21\n")
             
             if non_na_count == 0:
-                sys.stderr.write("⚠️ WARNING: All fields are NA - check if PDF is readable\n")
+                sys.stderr.write("⚠️ WARNING: All fields are NA - PDF may not be readable\n")
             
             return extracted
         else:
-            sys.stderr.write(f"❌ API Error {response.status_code}: {response.text}\n")
+            sys.stderr.write(f"❌ API Error {response.status_code}: {response.text[:200]}\n")
             return {}
             
     except Exception as e:
-        sys.stderr.write(f"❌ Error: {str(e)}\n")
+        sys.stderr.write(f"❌ Error: {str(e)[:200]}\n")
         return {}
 
 def main():
