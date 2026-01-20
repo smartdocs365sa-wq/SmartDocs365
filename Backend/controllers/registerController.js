@@ -22,7 +22,7 @@ const {
   sendWelcomeMail,
   sendOtpCode,
   encryptData,
-  sendEmailQueued // <--- Added this
+  sendEmailQueued // <--- This will now work because of the fix above
 } = require("../utils/repetedUsedFunction");
 
 // ⚠️ IMPORTANT: Ensure this ID matches the 'Free Trial' plan in your Database

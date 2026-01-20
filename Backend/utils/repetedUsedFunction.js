@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ FIXED: Real PNG logo from Docker backend
+// ✅ FIXED: Exported 'sendEmailQueued'
 // ============================================
 const axios = require("axios");
 const path = require("path");
@@ -428,5 +428,6 @@ module.exports = {
   expiredPolicyMail,
   sendMailToSupportMail,
   sendPaymentSuccessMail,
-  sendLimitReachedMail
+  sendLimitReachedMail,
+  sendEmailQueued // <--- ✅ ADDED THIS EXPORT HERE
 };
