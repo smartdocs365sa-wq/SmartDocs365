@@ -33,7 +33,7 @@ const HelpCenter = () => {
       questions: [
         {
           q: 'Is my data secure?',
-          a: 'To maximize your security, your policy PDFs are stored in our database only temporarily. For enhanced safety, if our system updates or a new version is released, older documents may be automatically deleted from our database. We strongly recommend that you download and keep a safe local copy of your original insurance documents.'
+          a: 'For your safety and privacy, uploaded PDF files are securely stored temporarily and then automatically deleted. Extracted data entries remain safely available in your account.'
         },
         {
           q: 'How do I reset my password?',
