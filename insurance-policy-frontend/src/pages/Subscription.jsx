@@ -27,7 +27,39 @@ const Subscription = () => {
 
   useEffect(() => {
     fetchPlans();
-  }, []);
+    
+    // ✅ Check for payment success/error in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    const planName = urlParams.get('plan');
+    
+    if (success === 'true') {
+        const message = planName 
+            ? `🎉 Payment Successful!\n\nWelcome to ${planName}!\n\nYour subscription is now active.`
+            : '🎉 Payment Successful!\n\nYour subscription is now active.';
+        
+        alert(message);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    }
+    
+    if (error) {
+        const errorMessages = {
+            'payment_failed': 'Payment was not completed. Please try again.',
+            'no_transaction_id': 'Invalid payment transaction.',
+            'recharge_not_found': 'Recharge record not found. Please contact support.',
+            'plan_not_found': 'Subscription plan not found. Please contact support.',
+            'callback_error': 'Payment verification failed. Please contact support.'
+        };
+        
+        alert('❌ Payment Error\n\n' + (errorMessages[error] || 'Payment failed. Please try again.'));
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}, []);
 
   const fetchPlans = async () => {
     try {

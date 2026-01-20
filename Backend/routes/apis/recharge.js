@@ -10,23 +10,26 @@ const subcriptionTypesModel = require('../../models/subcriptionTypesModel.js');
 const userSubcriptionInfoModel = require('../../models/userSubcriptionInfoModel.js');
 const userModel = require('../../models/userModel.js');
 const PaymentHistory = require('../../models/paymentHistory.js');
+const { sendPaymentSuccessMail } = require('../../utils/repetedUsedFunction');
 const crypto = require('crypto');
 const axios = require('axios');
 const { v4 } = require('uuid');
 const { getCurrentDateTime, addDaysToCurrentDate } = require("../../utils/repetedUsedFunction");
 
-// ============================================
-// ENVIRONMENT VARIABLES
-// ============================================
+// Environment Variables
 const MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || process.env.MERCHANT_ID;
 const SALT_KEY = process.env.PHONEPE_SALT_KEY || process.env.SALT_KEY;
 const SALT_INDEX = process.env.PHONEPE_SALT_INDEX || '1';
 const PHONEPE_HOST_URL = process.env.PHONEPE_HOST_URL || 'https://api.phonepe.com/apis/hermes';
 
+// ✅ CRITICAL FIX: Docker Backend URL
+const DOCKER_BACKEND = 'https://smartdocs365-backend-docker.onrender.com';
+
 console.log('💳 PhonePe Config:', {
     merchantId: MERCHANT_ID,
     saltKeyPresent: !!SALT_KEY,
-    hostUrl: PHONEPE_HOST_URL
+    hostUrl: PHONEPE_HOST_URL,
+    backendUrl: DOCKER_BACKEND
 });
 
 // ============================================
@@ -34,14 +37,14 @@ console.log('💳 PhonePe Config:', {
 // ============================================
 router.post("/purchase/plan-id/:id", async (req, res, next) => {
     try {
-        console.log('📝 Purchase Request Received:', {
+        console.log('🛒 Purchase Request:', {
             planId: req.params.id,
             userId: req.user_id,
             body: req.body
         });
 
         const plan_id = req.params.id;
-        const user_id = req.user_id; // From JWT middleware
+        const user_id = req.user_id;
 
         if (!plan_id || !user_id) {
             return res.status(400).json({ 
@@ -50,7 +53,6 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
             });
         }
 
-        // Validate Required Billing Fields
         const { FullName, Email_ID, Mobile_Number, Pincode, City, GST_Number } = req.body;
         
         if (!FullName || !Email_ID || !Mobile_Number || !Pincode || !City) {
@@ -60,7 +62,6 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
             });
         }
 
-        // Fetch Plan Details
         const planInfo = await subcriptionTypesModel.findOne({ plan_id });
         if (!planInfo) {
             return res.status(404).json({
@@ -71,21 +72,17 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
 
         console.log('📦 Plan Found:', planInfo);
 
-        // Generate Unique IDs
         const recharge_id = v4();
         const order_id = v4();
         const merchantTransactionId = `TXN_${Date.now()}_${user_id.slice(0, 8)}`;
-
-        // Calculate Expiry Date
         const recharge_expiry_date = addDaysToCurrentDate(planInfo.plan_duration);
 
-        // Create Pending Recharge Entry
         await rechargeInfoModel.create({
             recharge_id,
             user_id,
             order_id,
             plan_id,
-            is_active: false, // Will be activated on successful payment
+            is_active: false,
             payment_status: false,
             created_at: getCurrentDateTime().dateAndTimeString,
             recharge_expiry_date,
@@ -100,33 +97,31 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
 
         console.log('✅ Recharge Entry Created:', recharge_id);
 
-        // Prepare PhonePe Payment Payload
+        // ✅ CRITICAL FIX: Use Docker Backend URLs
         const paymentPayload = {
             merchantId: MERCHANT_ID,
             merchantTransactionId: merchantTransactionId,
             merchantUserId: user_id,
-            amount: planInfo.plan_price * 100, // Convert to paise
-            redirectUrl: `https://smartdocs365-backend.onrender.com/api/recharge/status-update/${recharge_id}`,
+            amount: planInfo.plan_price * 100,
+            redirectUrl: `${DOCKER_BACKEND}/api/recharge/status-update/${recharge_id}`,
             redirectMode: "REDIRECT",
-            callbackUrl: `https://smartdocs365-backend.onrender.com/api/recharge/status-update/${recharge_id}`,
+            callbackUrl: `${DOCKER_BACKEND}/api/recharge/status-update/${recharge_id}`,
             mobileNumber: Mobile_Number,
             paymentInstrument: {
                 type: "PAY_PAGE"
             }
         };
 
-        console.log('💰 Payment Payload:', paymentPayload);
+        console.log('💰 Payment Payload:', {
+            redirectUrl: paymentPayload.redirectUrl,
+            callbackUrl: paymentPayload.callbackUrl,
+            amount: paymentPayload.amount
+        });
 
-        // Encode Payload to Base64
         const base64Payload = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
-
-        // Generate Checksum
         const checksumString = base64Payload + '/pg/v1/pay' + SALT_KEY;
         const checksum = crypto.createHash('sha256').update(checksumString).digest('hex') + '###' + SALT_INDEX;
 
-        console.log('🔐 Checksum Generated');
-
-        // Make Request to PhonePe
         const phonepeUrl = `${PHONEPE_HOST_URL}/pg/v1/pay`;
         console.log('📡 PhonePe Request URL:', phonepeUrl);
 
@@ -174,7 +169,6 @@ router.post("/purchase/plan-id/:id", async (req, res, next) => {
         });
     }
 });
-
 // ============================================
 // 2. CALLBACK ROUTE - PAYMENT STATUS UPDATE
 // ============================================

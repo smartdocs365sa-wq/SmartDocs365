@@ -68,6 +68,21 @@ app.use(cookieParser());
 // Serve static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.static(path.join(__dirname, "/public")));
+// ✅ Explicitly serve logo.png
+app.get('/logo.png', (req, res) => {
+  const logoPath = path.join(__dirname, 'public', 'logo.png');
+  const fs = require('fs');
+  
+  if (fs.existsSync(logoPath)) {
+      res.sendFile(logoPath);
+      console.log('✅ Logo served:', logoPath);
+  } else {
+      console.error('❌ Logo not found:', logoPath);
+      res.status(404).send('Logo not found');
+  }
+});
+
+console.log('✅ Logo route registered: /logo.png');
 
 // ============================================
 // ZOHO OAUTH TOKEN GENERATOR
