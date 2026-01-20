@@ -22,6 +22,9 @@ router.get("/otp-verification/:email", registerController.sendOtp);
 // User registration (public)
 router.post("/register", registerController.create);
 
+// ✅ NEW CONTACT US ROUTE
+router.post("/contact-us", registerController.contactUs);
+
 // ============================================
 // PROTECTED ROUTES (Authentication required)
 // ============================================

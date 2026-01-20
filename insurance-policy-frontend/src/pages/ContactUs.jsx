@@ -2,7 +2,8 @@
 // FILE: src/pages/ContactUs.jsx
 // ============================================
 import { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle, Clock } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import api from '../services/api'; // ✅ Import your API service
 
 const ContactUs = () => {
   const [formData, setFormData] = useState({
@@ -11,27 +12,32 @@ const ContactUs = () => {
     subject: '',
     message: ''
   });
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState({ type: '', message: '' }); // 'success' or 'error'
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setStatus({ type: '', message: '' });
 
-    // FIX: Using mailto to ensure the email is actually sent via the user's email client
-    const mailToLink = `mailto:Support@smartdocs365.com?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(
-      `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
-    )}`;
+    try {
+      // ✅ API Call to your new backend route
+      const response = await api.post('/register/contact-us', formData);
 
-    // Open email client
-    window.location.href = mailToLink;
-
-    setLoading(false);
-    setSubmitted(true);
-    setFormData({ name: '', email: '', subject: '', message: '' });
-      
-    // Reset success message after 5 seconds
-    setTimeout(() => setSubmitted(false), 5000);
+      if (response.data.success) {
+        setStatus({ type: 'success', message: 'Message sent successfully! We will get back to you shortly.' });
+        setFormData({ name: '', email: '', subject: '', message: '' }); // Clear form
+        
+        // Clear success message after 5 seconds
+        setTimeout(() => setStatus({ type: '', message: '' }), 5000);
+      }
+    } catch (error) {
+      console.error("Contact Error:", error);
+      const errorMsg = error.response?.data?.message || "Failed to send message. Please try again.";
+      setStatus({ type: 'error', message: errorMsg });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -51,79 +57,50 @@ const ContactUs = () => {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-          {/* Contact Information */}
+          
+          {/* LEFT COLUMN: Contact Information */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             
             {/* Email Card */}
-            <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', background: 'white' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{
-                  width: '56px',
-                  height: '56px',
-                  background: '#dbeafe',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <div style={{ width: '56px', height: '56px', background: '#dbeafe', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Mail size={28} color="#2563eb" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.25rem' }}>Email Us</h3>
-                  <a href="mailto:Support@smartdocs365.com" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '1rem' }}>
-                    Support@smartdocs365.com
-                  </a>
+                  <a href="mailto:Support@smartdocs365.com" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '1rem' }}>Support@smartdocs365.com</a>
                 </div>
               </div>
             </div>
 
             {/* Phone Card */}
-            <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', background: 'white' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{
-                  width: '56px',
-                  height: '56px',
-                  background: '#d1fae5',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <div style={{ width: '56px', height: '56px', background: '#d1fae5', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Phone size={28} color="#16a34a" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.25rem' }}>Call Us</h3>
-                  <a href="tel:+918080737271" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '1rem' }}>
-                    +91 8080737271
-                  </a>
+                  <a href="tel:+918080737271" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '1rem' }}>+91 8080737271</a>
                 </div>
               </div>
             </div>
 
-            {/* Office Card */}
-            <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            {/* Address Card */}
+            <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', background: 'white' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{
-                  width: '56px',
-                  height: '56px',
-                  background: '#ede9fe',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <div style={{ width: '56px', height: '56px', background: '#ede9fe', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <MapPin size={28} color="#7c3aed" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.25rem' }}>Visit Us</h3>
-                  <p style={{ color: '#6b7280', margin: 0, fontSize: '1rem' }}>
-                  502, Soni Apt, SVP Road, Borivali (W) Mumbai 400103
-                  </p>
+                  <p style={{ color: '#6b7280', margin: 0, fontSize: '1rem' }}>502, Soni Apt, SVP Road, Borivali (W) Mumbai 400103</p>
                 </div>
               </div>
             </div>
 
-            {/* Business Hours Card */}
+            {/* Business Hours */}
             <div className="card" style={{
               padding: '2rem',
               borderRadius: '12px',
@@ -152,7 +129,7 @@ const ContactUs = () => {
             </div>
           </div>
 
-          {/* Contact Form */}
+          {/* RIGHT COLUMN: Contact Form */}
           <div className="card" style={{
             padding: '2rem',
             borderRadius: '12px',
@@ -164,28 +141,31 @@ const ContactUs = () => {
               Send us a Message
             </h2>
 
-            {submitted && (
+            {/* Success Message */}
+            {status.type === 'success' && (
               <div style={{
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                background: '#dcfce7',
-                border: '1px solid #86efac',
-                borderRadius: '8px',
-                color: '#166534',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem'
+                marginBottom: '1.5rem', padding: '1rem', background: '#dcfce7', border: '1px solid #86efac',
+                borderRadius: '8px', color: '#166534', display: 'flex', alignItems: 'center', gap: '0.75rem'
               }}>
                 <CheckCircle size={20} />
-                <span>Opening your email client...</span>
+                <span>{status.message}</span>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {status.type === 'error' && (
+              <div style={{
+                marginBottom: '1.5rem', padding: '1rem', background: '#fee2e2', border: '1px solid #fca5a5',
+                borderRadius: '8px', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.75rem'
+              }}>
+                <AlertCircle size={20} />
+                <span>{status.message}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit}>
               <div className="mb-4" style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
-                  Full Name
-                </label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>Full Name</label>
                 <input
                   type="text"
                   name="name"
@@ -198,9 +178,7 @@ const ContactUs = () => {
               </div>
 
               <div className="mb-4" style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
-                  Email Address
-                </label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>Email Address</label>
                 <input
                   type="email"
                   name="email"
@@ -213,9 +191,7 @@ const ContactUs = () => {
               </div>
 
               <div className="mb-4" style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
-                  Subject
-                </label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>Subject</label>
                 <input
                   type="text"
                   name="subject"
@@ -228,9 +204,7 @@ const ContactUs = () => {
               </div>
 
               <div className="mb-4" style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
-                  Message
-                </label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>Message</label>
                 <textarea
                   name="message"
                   value={formData.message}
@@ -247,23 +221,14 @@ const ContactUs = () => {
                 disabled={loading}
                 className="btn btn-primary"
                 style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '0.5rem', padding: '1rem', borderRadius: '8px',
+                  background: loading ? '#93c5fd' : '#2563eb',
+                  color: 'white', border: 'none', fontSize: '1rem', fontWeight: 600,
+                  cursor: loading ? 'not-allowed' : 'pointer'
                 }}
               >
-                {loading ? 'Opening Email...' : (
+                {loading ? 'Sending...' : (
                   <>
                     <Send size={20} />
                     Send Message

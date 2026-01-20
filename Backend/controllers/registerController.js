@@ -1,7 +1,6 @@
 // ============================================
 // FILE: Backend/controllers/registerController.js
-// ✅ FIXED: Auto-Assign Free Trial & Activate Subscription
-// ✅ FEATURES: Full Admin List & Profile Update Preserved
+// ✅ UPDATED: Added Contact Us Functionality
 // ============================================
 
 const userModel = require("../models/userModel");
@@ -10,9 +9,10 @@ const accountModel = require("../models/accountModel");
 const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel.js");
 const pdfDetailsModel = require("../models/pdfDetailsModel.js");
-// ✅ Added userSubcriptionInfoModel
 const userSubcriptionInfoModel = require("../models/userSubcriptionInfoModel.js"); 
 const { v4 } = require("uuid");
+const nodemailer = require("nodemailer"); // ✅ Added Nodemailer
+
 const {
   getCurrentDateTime,
   namingValidation,
@@ -122,7 +122,6 @@ const create = async (req, res, next) => {
       });
 
       // 4. ✅ CRITICAL ADDITION: Create Active Subscription Entry
-      // This ensures the dashboard sees the user as "Active" immediately
       const now = new Date();
       const expiryDate = new Date();
       expiryDate.setDate(now.getDate() + trialDuration);
@@ -880,6 +879,63 @@ const sendOtp = async (req, res, next) => {
   }
 };
 
+// ✅ NEW CONTACT US FUNCTION
+const contactUs = async (req, res, next) => {
+  try {
+    const { name, email, subject, message } = req.body;
+
+    // Validation
+    if (!name || !email || !subject || !message) {
+      return res.status(422).json({ 
+        success: false, 
+        message: "All fields are required!" 
+      });
+    }
+
+    // Configure Transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail", 
+      auth: {
+        user: process.env.EMAIL, // Ensure this env var exists
+        pass: process.env.PASSWORD, // Ensure this env var exists
+      },
+    });
+
+    // Email Options
+    const mailOptions = {
+      from: process.env.EMAIL, // Sent FROM system email
+      to: "Support@smartdocs365.com", // Sent TO Support
+      replyTo: email, // Reply goes to the user who filled the form
+      subject: `[Contact Form] ${subject}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+          <h2 style="color: #2563eb;">New Contact Message</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+          <h3 style="color: #4b5563;">Message:</h3>
+          <p style="background-color: #f9fafb; padding: 15px; border-radius: 8px; white-space: pre-wrap;">${message}</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Message sent successfully! We will contact you soon." 
+    });
+
+  } catch (error) {
+    console.error("Contact Us Error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to send message. Please try again later." 
+    });
+  }
+};
+
 module.exports = {
   create,
   userList,
@@ -890,5 +946,6 @@ module.exports = {
   createAdmin,
   blockUser,
   getUserSubcription,
-  deleteAdmin
+  deleteAdmin,
+  contactUs // ✅ Exported New Function
 };
