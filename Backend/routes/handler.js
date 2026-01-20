@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/routes/handler.js
-// ✅ FIXED: Uploads, Counter Increment + INSTANT EMAIL TRIGGER
+// ✅ COMPLETE FIX: Payment callback public + Email trigger
 // ============================================
 
 const express = require("express");
@@ -18,9 +18,9 @@ const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel");
 const userSubcriptionInfoModel = require("../models/userSubcriptionInfoModel");
 const blogModel = require("../models/blogModel");
-const userModel = require("../models/userModel"); // ✅ ADDED: To fetch email address
+const userModel = require("../models/userModel");
 
-// ✅ UTILS (Import Email Function)
+// ✅ UTILS
 const { sendLimitReachedMail } = require("../utils/repetedUsedFunction"); 
 
 /* ===============================
@@ -56,21 +56,27 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "FIXED-EMAIL-TRIGGER" });
+  res.json({ status: "success", version: "FIXED-PAYMENT-CALLBACK" });
 });
 
 /* ===============================
-   PUBLIC ROUTES (No JWT)
+   PUBLIC ROUTES (NO JWT REQUIRED)
+   ✅ CRITICAL: These routes work WITHOUT authentication
 ================================ */
+
+// Authentication routes
 router.use("/user", require("./apis/register"));
 router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
+
+// Public subscription plans
 router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));
 
-// ✅ CRITICAL: Dedicated Payment Callback
-router.use("/recharge/status-update", require("./apis/paymentCallback"));
+// ✅ CRITICAL FIX: Payment callback MUST be public
+// PhonePe cannot provide JWT token, so this route MUST work without authentication
+router.use("/recharge/status-update", require("./apis/recharge"));
 
-// Public Blogs
+// Public blogs
 router.get("/public/blogs", async (req, res) => {
   try {
     const blogs = await blogModel.find({ is_active: true }).sort({ createdAt: -1 });
@@ -81,6 +87,7 @@ router.get("/public/blogs", async (req, res) => {
   }
 });
 
+// Demo Excel download
 router.get("/download-demo-excel", (req, res) => {
   const demoPath = path.join(__dirname, "../DEMO.xlsx");
   if (fs.existsSync(demoPath)) {
@@ -91,19 +98,25 @@ router.get("/download-demo-excel", (req, res) => {
 });
 
 /* ===============================
-   PROTECTED ROUTES (JWT Required)
+   PROTECTED ROUTES (JWT REQUIRED)
+   ✅ Everything BELOW this line requires authentication
 ================================ */
 router.use(verifyJWT);
 
+// User routes
 router.use("/user", require("./apis/user"));
+
+// Subscription management (admin)
 router.use("/subcription-plan", require("./admin/subcriptionPlan"));
 router.use("/admin/blogs", require("./admin/blogs")); 
 router.use("/report", require("./admin/report"));
+
+// PDF and data routes
 router.use("/pdf", require("./apis/pdfData"));
 router.use("/questions", require("./apis/userQuestions"));
 router.use("/import-excel-data", require("./apis/importExcelData"));
 
-// Protected recharge routes
+// Protected recharge routes (purchase requires auth, callback is public above)
 router.use("/recharge", require("./apis/recharge"));
 
 /* ===============================

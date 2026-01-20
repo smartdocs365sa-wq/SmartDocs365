@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ UPDATED: Payment Email with Template
+// ✅ COMPLETE FIX: Text logos for email compatibility
 // ============================================
 const axios = require("axios");
 const path = require("path");
@@ -14,12 +14,14 @@ const welcomeMessageFile = path.join(__dirname, "../html/", "welcomeEmail.html")
 const sendOtpFile = path.join(__dirname, "../html/", "otpMail.html");
 const expiryMailFile = path.join(__dirname, "../html/", "expiryMail.html");
 const expiryPolicyMailFile = path.join(__dirname, "../html/", "policyExpireMail.html");
-const paymentSuccessFile = path.join(__dirname, "../html/", "paymentSuccessMail.html"); // ✅ NEW
+const paymentSuccessFile = path.join(__dirname, "../html/", "paymentSuccessMail.html");
 
 const secretKey = process.env.SECRET_KEY || 'sdlfklfas6df5sd4fsdf5'; 
 const algorithm = 'aes-256-cbc';
-const baseUrl = "https://smartdocs365-backend-docker.onrender.com/api/"; // ✅ UPDATED TO DOCKER
-const LOGO_URL = "https://smartdocs365-backend-docker.onrender.com/logo.png"; // ✅ UPDATED TO DOCKER
+const baseUrl = "https://smartdocs365-backend-docker.onrender.com/api/";
+
+// ✅ LOGO FIX: Use text-based logo (works in all email clients including Gmail)
+const TEXT_LOGO = `<h1 style="margin: 0; font-size: 36px; font-weight: 800; font-family: Arial, sans-serif;">SmartDocs<span style="color: inherit; opacity: 0.8;">365</span></h1>`;
 
 /* ============================================================
    ✅ ZOHO MAIL HTTP API (INDIA DC - .IN)
@@ -149,15 +151,32 @@ setTimeout(async () => {
 }, 2000);
 
 /* ============================================================
+   ✅ HELPER FUNCTION: Replace SVG with Text Logo
+   ============================================================ */
+function replaceSVGWithTextLogo(html, color = '#ffffff') {
+  // Replace any SVG logo with text-based logo
+  const svgPattern = /<svg[^>]*>[\s\S]*?<\/svg>/gi;
+  const textLogo = `<h1 style="margin: 0; font-size: 36px; font-weight: 800; font-family: Arial, sans-serif; color: ${color};">SmartDocs<span style="opacity: 0.8;">365</span></h1>`;
+  return html.replace(svgPattern, textLogo);
+}
+
+/* ============================================================
    EMAIL FUNCTIONS
    ============================================================ */
 
 function sendWelcomeMail(email, name) {
   fs.readFile(welcomeMessageFile, "utf8", async (err, template) => {
     if (err) return console.error("❌ Template missing:", err);
-    const fixedTemplate = template.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
+    
+    // ✅ Replace SVG with text logo
+    let fixedTemplate = replaceSVGWithTextLogo(template, '#ffffff');
     const rendered = fixedTemplate.replace("{{{ name }}}", name);
-    await sendEmailQueued({ to: email, subject: "Welcome to SmartDocs365!", html: rendered });
+    
+    await sendEmailQueued({ 
+      to: email, 
+      subject: "Welcome to SmartDocs365!", 
+      html: rendered 
+    });
   });
 }
 
@@ -166,9 +185,18 @@ async function expiredMail(email, name, date) {
     const templateData = fs.readFileSync(expiryMailFile, 'utf8');
     const template = Handlebars.compile(templateData);
     const rendered = template({ name, date }); 
-    const finalHtml = rendered.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
-    await sendEmailQueued({ to: email, subject: "⚠️ Subscription Expiring Soon", html: finalHtml });
-  } catch (err) { console.error("❌ Template error:", err.message); }
+    
+    // ✅ Replace SVG with text logo
+    const finalHtml = replaceSVGWithTextLogo(rendered, '#0369a1');
+    
+    await sendEmailQueued({ 
+      to: email, 
+      subject: "⚠️ Subscription Expiring Soon", 
+      html: finalHtml 
+    });
+  } catch (err) { 
+    console.error("❌ Template error:", err.message); 
+  }
 }
 
 async function expiredPolicyMail(email, name, date, number, days) {
@@ -176,51 +204,86 @@ async function expiredPolicyMail(email, name, date, number, days) {
     const templateData = fs.readFileSync(expiryPolicyMailFile, 'utf8');
     const template = Handlebars.compile(templateData);
     const rendered = template({ name, number, date, days });
-    const finalHtml = rendered.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
-    await sendEmailQueued({ to: email, subject: `📄 Policy Renewal Reminder - ${number}`, html: finalHtml });
-  } catch (err) { console.error("❌ Template error:", err.message); }
+    
+    // ✅ Replace SVG with text logo
+    const finalHtml = replaceSVGWithTextLogo(rendered, '#dc2626');
+    
+    await sendEmailQueued({ 
+      to: email, 
+      subject: `📄 Policy Renewal Reminder - ${number}`, 
+      html: finalHtml 
+    });
+  } catch (err) { 
+    console.error("❌ Template error:", err.message); 
+  }
 }
 
 function sendOtpCode(email, otpCode) {
   fs.readFile(sendOtpFile, "utf8", async (err, template) => {
     if (err) return console.error("❌ OTP template missing:", err);
-    const fixedTemplate = template.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
+    
+    // ✅ Replace SVG with text logo
+    let fixedTemplate = replaceSVGWithTextLogo(template, '#3b82f6');
     const rendered = fixedTemplate.replace("{{{ otpCode }}}", otpCode);
-    await sendEmailQueued({ to: email, subject: "Your OTP Verification Code", html: rendered });
+    
+    await sendEmailQueued({ 
+      to: email, 
+      subject: "Your OTP Verification Code", 
+      html: rendered 
+    });
   });
 }
 
 async function sendResetEmail(email, name, resetToken) {
   try {
     if (!fs.existsSync(ResetPasswordMail)) return false;
+    
     const templateData = fs.readFileSync(ResetPasswordMail, 'utf8');
     const template = Handlebars.compile(templateData);
     const renderedTemplate = template({ name, resetToken, baseUrl });
-    const finalHtml = renderedTemplate.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
-    await sendEmailQueued({ to: email, subject: 'Reset Your Password - SmartDocs365', html: finalHtml });
+    
+    // ✅ Replace SVG with text logo
+    const finalHtml = replaceSVGWithTextLogo(renderedTemplate, '#ffffff');
+    
+    await sendEmailQueued({ 
+      to: email, 
+      subject: 'Reset Your Password - SmartDocs365', 
+      html: finalHtml 
+    });
+    
     return true;
-  } catch (error) { return false; }
+  } catch (error) { 
+    return false; 
+  }
 }
 
-// ✅ UPDATED: Payment Success Email with Template
+// ✅ Payment Success Email
 async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate) {
   try {
-    // Check if template exists
     if (!fs.existsSync(paymentSuccessFile)) {
-      console.warn('⚠️ Payment success template not found, using fallback HTML');
-      // Fallback HTML if template doesn't exist
+      console.warn('⚠️ Payment success template not found, using fallback');
+      
       const fallbackHtml = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
-          <h2 style="color: #10b981;">✅ Payment Successful!</h2>
-          <p>Dear ${name},</p>
-          <p>Thank you for purchasing <strong>${planName}</strong>.</p>
-          <div style="background: #f0fdf4; padding: 15px; margin: 20px 0; border-radius: 8px;">
-            <p><strong>Amount:</strong> ₹${amount}</p>
-            <p><strong>Valid Until:</strong> ${expiryDate}</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
+            <h1 style="margin: 0; font-size: 36px; font-weight: 800; color: #ffffff; font-family: Arial, sans-serif;">SmartDocs<span style="opacity: 0.8;">365</span></h1>
           </div>
-          <a href="https://smartdocs365.com/dashboard" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Dashboard</a>
+          <div style="padding: 30px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 20px;">✓</div>
+            <h2 style="color: #065f46; margin: 0 0 10px 0;">Payment Successful!</h2>
+            <p style="color: #6b7280;">Your subscription has been activated</p>
+            <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 12px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%;">
+                <tr><td style="padding: 8px 0; color: #6b7280;">Plan:</td><td style="padding: 8px 0; color: #065f46; font-weight: bold; text-align: right;">${planName}</td></tr>
+                <tr><td style="padding: 8px 0; color: #6b7280;">Amount:</td><td style="padding: 8px 0; color: #065f46; font-weight: bold; text-align: right;">₹${amount}</td></tr>
+                <tr><td style="padding: 8px 0; color: #6b7280;">Valid Until:</td><td style="padding: 8px 0; color: #10b981; font-weight: bold; text-align: right;">${expiryDate}</td></tr>
+              </table>
+            </div>
+            <a href="https://smartdocs365.com/dashboard" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px;">Access Dashboard</a>
+          </div>
         </div>
       `;
+      
       await sendEmailQueued({ 
         to: email, 
         subject: "🎉 Payment Successful - Plan Activated", 
@@ -229,7 +292,6 @@ async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate)
       return { success: true };
     }
 
-    // Use template if it exists
     const templateData = fs.readFileSync(paymentSuccessFile, 'utf8');
     const template = Handlebars.compile(templateData);
     
@@ -247,7 +309,8 @@ async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate)
       transactionDate
     });
     
-    const finalHtml = rendered.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
+    // ✅ Replace SVG with text logo
+    const finalHtml = replaceSVGWithTextLogo(rendered, '#ffffff');
     
     await sendEmailQueued({ 
       to: email, 
@@ -268,8 +331,9 @@ async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate)
 async function sendLimitReachedMail(email, name, limit) {
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
-        <h2 style="margin: 0;">⚠️ Upload Limit Reached</h2>
+      <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0;">
+        <h1 style="margin: 0; font-size: 36px; font-weight: 800; font-family: Arial, sans-serif;">SmartDocs<span style="opacity: 0.8;">365</span></h1>
+        <h2 style="margin: 20px 0 0 0;">⚠️ Upload Limit Reached</h2>
       </div>
       <div style="background: white; padding: 30px; border: 1px solid #fee2e2; border-radius: 0 0 12px 12px;">
         <p style="color: #374151; font-size: 16px;">Dear <strong>${name}</strong>,</p>
@@ -281,30 +345,41 @@ async function sendLimitReachedMail(email, name, limit) {
       </div>
     </div>
   `;
+  
   console.log(`📧 Queuing Limit Reached Mail for ${email}`);
-  await sendEmailQueued({ to: email, subject: "⚠️ Action Required: Upload Limit Reached", html: htmlContent });
+  await sendEmailQueued({ 
+    to: email, 
+    subject: "⚠️ Action Required: Upload Limit Reached", 
+    html: htmlContent 
+  });
 }
 
 async function sendMailToSupportMail(payload) {
-    const supportEmail = process.env.EMAIL_USER || 'Support@smartdocs365.com';
-    await sendEmailQueued({
-      to: supportEmail,
-      replyTo: payload?.email_address,
-      subject: 'New User Inquiry',
-      html: `<p>New inquiry from ${payload?.full_name} (${payload?.email_address}): ${payload?.description}</p>`
-    });
+  const supportEmail = process.env.EMAIL_USER || 'Support@smartdocs365.com';
+  await sendEmailQueued({
+    to: supportEmail,
+    replyTo: payload?.email_address,
+    subject: 'New User Inquiry',
+    html: `<p>New inquiry from ${payload?.full_name} (${payload?.email_address}): ${payload?.description}</p>`
+  });
 }
 
 // Helper Exports
-function addDaysToCurrentDate(days) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().split('T')[0]; }
+function addDaysToCurrentDate(days) { 
+  const d = new Date(); 
+  d.setDate(d.getDate() + days); 
+  return d.toISOString().split('T')[0]; 
+}
+
 function getCurrentDateTime() {
   const now = new Date();
   return {
-      dateAndTimeString: now,
-      date: now.toISOString().split('T')[0],
-      time: now.toTimeString().split(' ')[0]
+    dateAndTimeString: now,
+    date: now.toISOString().split('T')[0],
+    time: now.toTimeString().split(' ')[0]
   };
 }
+
 function namingValidation(str) { return /^[a-zA-Z\s]+$/.test(str); }
 function isEmailValid(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 function getOffset(currentPage = 1, listPerPage) { return (currentPage - 1) * listPerPage; }
@@ -319,10 +394,25 @@ function isFutureDate(cardDate) { return true; }
 function isValidDate(d) { return !isNaN(Date.parse(d)); }
 
 module.exports = {
-  getCurrentDateTime, namingValidation, isEmailValid, getOffset, emptyOrRows,
-  sendWelcomeMail, encryptData, decryptData, validateZIPCode, deleteFile,
-  addDaysToCurrentDate, priceBreakDown, sendResetEmail, validateCardNumber,
-  isFutureDate, isValidDate, sendOtpCode, expiredMail, expiredPolicyMail,
+  getCurrentDateTime, 
+  namingValidation, 
+  isEmailValid, 
+  getOffset, 
+  emptyOrRows,
+  sendWelcomeMail, 
+  encryptData, 
+  decryptData, 
+  validateZIPCode, 
+  deleteFile,
+  addDaysToCurrentDate, 
+  priceBreakDown, 
+  sendResetEmail, 
+  validateCardNumber,
+  isFutureDate, 
+  isValidDate, 
+  sendOtpCode, 
+  expiredMail, 
+  expiredPolicyMail,
   sendMailToSupportMail,
   sendPaymentSuccessMail,
   sendLimitReachedMail
