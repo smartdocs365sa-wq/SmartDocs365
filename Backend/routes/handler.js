@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/routes/handler.js
-// ✅ COMPLETE FIX: Payment callback public + Email trigger
+// âœ… FIXED: Uploads, Counter Increment + INSTANT EMAIL TRIGGER
 // ============================================
 
 const express = require("express");
@@ -12,15 +12,15 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const { v4 } = require("uuid");
 
-// ✅ MODELS
+// âœ… MODELS
 const pdfDetailsModel = require("../models/pdfDetailsModel");
 const rechargeInfoModel = require("../models/rechargeInfoModel");
 const subcriptionTypesModel = require("../models/subcriptionTypesModel");
 const userSubcriptionInfoModel = require("../models/userSubcriptionInfoModel");
 const blogModel = require("../models/blogModel");
-const userModel = require("../models/userModel");
+const userModel = require("../models/userModel"); // âœ… ADDED: To fetch email address
 
-// ✅ UTILS
+// âœ… UTILS (Import Email Function)
 const { sendLimitReachedMail } = require("../utils/repetedUsedFunction"); 
 
 /* ===============================
@@ -56,27 +56,21 @@ function formatDateForFrontend(dateStr) {
    BASE ROUTE
 ================================ */
 router.get("/", (req, res) => {
-  res.json({ status: "success", version: "FIXED-PAYMENT-CALLBACK" });
+  res.json({ status: "success", version: "FIXED-EMAIL-TRIGGER" });
 });
 
 /* ===============================
-   PUBLIC ROUTES (NO JWT REQUIRED)
-   ✅ CRITICAL: These routes work WITHOUT authentication
+   PUBLIC ROUTES (No JWT)
 ================================ */
-
-// Authentication routes
 router.use("/user", require("./apis/register"));
 router.use("/login", require("./apis/login"));
 router.use("/update", require("./apis/update_password"));
-
-// Public subscription plans
 router.use("/subcription-plan-direct", require("./admin/subcriptionPlan"));
 
-// ✅ CRITICAL FIX: Payment callback MUST be public
-// PhonePe cannot provide JWT token, so this route MUST work without authentication
-router.use("/recharge/status-update", require("./apis/recharge"));
+// âœ… CRITICAL: Dedicated Payment Callback
+router.use("/recharge/status-update", require("./apis/paymentCallback"));
 
-// Public blogs
+// Public Blogs
 router.get("/public/blogs", async (req, res) => {
   try {
     const blogs = await blogModel.find({ is_active: true }).sort({ createdAt: -1 });
@@ -87,7 +81,6 @@ router.get("/public/blogs", async (req, res) => {
   }
 });
 
-// Demo Excel download
 router.get("/download-demo-excel", (req, res) => {
   const demoPath = path.join(__dirname, "../DEMO.xlsx");
   if (fs.existsSync(demoPath)) {
@@ -98,29 +91,23 @@ router.get("/download-demo-excel", (req, res) => {
 });
 
 /* ===============================
-   PROTECTED ROUTES (JWT REQUIRED)
-   ✅ Everything BELOW this line requires authentication
+   PROTECTED ROUTES (JWT Required)
 ================================ */
 router.use(verifyJWT);
 
-// User routes
 router.use("/user", require("./apis/user"));
-
-// Subscription management (admin)
 router.use("/subcription-plan", require("./admin/subcriptionPlan"));
 router.use("/admin/blogs", require("./admin/blogs")); 
 router.use("/report", require("./admin/report"));
-
-// PDF and data routes
 router.use("/pdf", require("./apis/pdfData"));
 router.use("/questions", require("./apis/userQuestions"));
 router.use("/import-excel-data", require("./apis/importExcelData"));
 
-// Protected recharge routes (purchase requires auth, callback is public above)
+// Protected recharge routes
 router.use("/recharge", require("./apis/recharge"));
 
 /* ===============================
-   PDF UPLOAD - ✅ FIXED WITH EMAIL TRIGGER
+   PDF UPLOAD - âœ… FIXED WITH EMAIL TRIGGER
 ================================ */
 router.post("/upload-pdf", upload.any(), async (req, res) => {
   if (!req.files || req.files.length === 0) {
@@ -130,11 +117,11 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
   const user_id = req.user_id;
   if (!user_id) return res.status(401).json({ success: false, message: "User not authenticated" });
 
-  console.log('\n📤 PDF Upload Request:');
+  console.log('\nðŸ“¤ PDF Upload Request:');
   console.log('   User:', user_id);
   console.log('   Files:', req.files.length);
 
-  // ✅ Get user's subscription info
+  // âœ… Get user's subscription info
   const userSubscription = await userSubcriptionInfoModel.findOne({ user_id });
   
   if (!userSubscription) {
@@ -259,9 +246,9 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
     });
   }
 
-  // ✅ CRITICAL FIX: INCREMENT COUNTER & SEND EMAIL
+  // âœ… CRITICAL FIX: INCREMENT COUNTER & SEND EMAIL
   if (successfulUploads > 0) {
-    console.log(`\n✅ Incrementing counter by ${successfulUploads}...`);
+    console.log(`\nâœ… Incrementing counter by ${successfulUploads}...`);
     
     const updatedSubscription = await userSubcriptionInfoModel.findOneAndUpdate(
       { user_id },
@@ -278,17 +265,17 @@ router.post("/upload-pdf", upload.any(), async (req, res) => {
     console.log('   New Counter:', currentCount);
     console.log('   Remaining:', limit - currentCount);
 
-    // 📧 MAIL TRIGGER: Did we just hit the limit?
+    // ðŸ“§ MAIL TRIGGER: Did we just hit the limit?
     if (limit > 0 && currentCount >= limit) {
-        console.log(`🚨 LIMIT REACHED (${currentCount}/${limit}) - Triggering Alert Email!`);
+        console.log(`ðŸš¨ LIMIT REACHED (${currentCount}/${limit}) - Triggering Alert Email!`);
         
         // Fetch User details for email address
         const user = await userModel.findOne({ user_id });
         if (user) {
             await sendLimitReachedMail(user.email_address, user.first_name || "User", limit);
-            console.log(`✅ Limit Mail Sent to ${user.email_address}`);
+            console.log(`âœ… Limit Mail Sent to ${user.email_address}`);
         } else {
-            console.log("❌ Could not find user to send limit email.");
+            console.log("âŒ Could not find user to send limit email.");
         }
     }
   }
