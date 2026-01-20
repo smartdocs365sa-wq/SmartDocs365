@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/controllers/registerController.js
-// ✅ UPDATED: Added Contact Us Functionality
+// ✅ UPDATED: Added Contact Us using existing Zoho Queue
 // ============================================
 
 const userModel = require("../models/userModel");
@@ -11,8 +11,8 @@ const subcriptionTypesModel = require("../models/subcriptionTypesModel.js");
 const pdfDetailsModel = require("../models/pdfDetailsModel.js");
 const userSubcriptionInfoModel = require("../models/userSubcriptionInfoModel.js"); 
 const { v4 } = require("uuid");
-const nodemailer = require("nodemailer"); // ✅ Added Nodemailer
 
+// ✅ IMPORT sendEmailQueued HERE
 const {
   getCurrentDateTime,
   namingValidation,
@@ -22,6 +22,7 @@ const {
   sendWelcomeMail,
   sendOtpCode,
   encryptData,
+  sendEmailQueued // <--- Added this
 } = require("../utils/repetedUsedFunction");
 
 // ⚠️ IMPORTANT: Ensure this ID matches the 'Free Trial' plan in your Database
@@ -122,6 +123,7 @@ const create = async (req, res, next) => {
       });
 
       // 4. ✅ CRITICAL ADDITION: Create Active Subscription Entry
+      // This ensures the dashboard sees the user as "Active" immediately
       const now = new Date();
       const expiryDate = new Date();
       expiryDate.setDate(now.getDate() + trialDuration);
@@ -879,7 +881,7 @@ const sendOtp = async (req, res, next) => {
   }
 };
 
-// ✅ NEW CONTACT US FUNCTION
+// ✅ NEW CONTACT US FUNCTION (Uses existing queue)
 const contactUs = async (req, res, next) => {
   try {
     const { name, email, subject, message } = req.body;
@@ -892,20 +894,12 @@ const contactUs = async (req, res, next) => {
       });
     }
 
-    // Configure Transporter
-    const transporter = nodemailer.createTransport({
-      service: "gmail", 
-      auth: {
-        user: process.env.EMAIL, // Ensure this env var exists
-        pass: process.env.PASSWORD, // Ensure this env var exists
-      },
-    });
+    const supportEmail = process.env.EMAIL_USER || "Support@smartdocs365.com";
 
-    // Email Options
-    const mailOptions = {
-      from: process.env.EMAIL, // Sent FROM system email
-      to: "Support@smartdocs365.com", // Sent TO Support
-      replyTo: email, // Reply goes to the user who filled the form
+    // Use existing sendEmailQueued function
+    await sendEmailQueued({
+      to: supportEmail,
+      replyTo: email, 
       subject: `[Contact Form] ${subject}`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
@@ -918,9 +912,7 @@ const contactUs = async (req, res, next) => {
           <p style="background-color: #f9fafb; padding: 15px; border-radius: 8px; white-space: pre-wrap;">${message}</p>
         </div>
       `,
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
 
     res.status(200).json({ 
       success: true, 
@@ -947,5 +939,5 @@ module.exports = {
   blockUser,
   getUserSubcription,
   deleteAdmin,
-  contactUs // ✅ Exported New Function
+  contactUs // ✅ Exported
 };

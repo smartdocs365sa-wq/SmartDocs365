@@ -1,9 +1,10 @@
 // ============================================
 // FILE: src/pages/ContactUs.jsx
+// ✅ FIXED: Correct API Path (/user/contact-us)
 // ============================================
 import { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import api from '../services/api'; // ✅ Import your API service
+import api from '../services/api';
 
 const ContactUs = () => {
   const [formData, setFormData] = useState({
@@ -12,7 +13,7 @@ const ContactUs = () => {
     subject: '',
     message: ''
   });
-  const [status, setStatus] = useState({ type: '', message: '' }); // 'success' or 'error'
+  const [status, setStatus] = useState({ type: '', message: '' });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -21,14 +22,12 @@ const ContactUs = () => {
     setStatus({ type: '', message: '' });
 
     try {
-      // ✅ API Call to your new backend route
-      const response = await api.post('/register/contact-us', formData);
+      // ✅ CORRECT PATH: 'handler.js' mounts register routes at '/user'
+      const response = await api.post('/user/contact-us', formData);
 
       if (response.data.success) {
         setStatus({ type: 'success', message: 'Message sent successfully! We will get back to you shortly.' });
-        setFormData({ name: '', email: '', subject: '', message: '' }); // Clear form
-        
-        // Clear success message after 5 seconds
+        setFormData({ name: '', email: '', subject: '', message: '' });
         setTimeout(() => setStatus({ type: '', message: '' }), 5000);
       }
     } catch (error) {
@@ -58,10 +57,8 @@ const ContactUs = () => {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
           
-          {/* LEFT COLUMN: Contact Information */}
+          {/* LEFT: INFO CARDS */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            
-            {/* Email Card */}
             <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', background: 'white' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ width: '56px', height: '56px', background: '#dbeafe', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -74,7 +71,6 @@ const ContactUs = () => {
               </div>
             </div>
 
-            {/* Phone Card */}
             <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', background: 'white' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ width: '56px', height: '56px', background: '#d1fae5', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -87,7 +83,6 @@ const ContactUs = () => {
               </div>
             </div>
 
-            {/* Address Card */}
             <div className="card" style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb', background: 'white' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ width: '56px', height: '56px', background: '#ede9fe', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -100,8 +95,7 @@ const ContactUs = () => {
               </div>
             </div>
 
-            {/* Business Hours */}
-            <div className="card" style={{
+             <div className="card" style={{
               padding: '2rem',
               borderRadius: '12px',
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -129,7 +123,7 @@ const ContactUs = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Contact Form */}
+          {/* RIGHT: CONTACT FORM */}
           <div className="card" style={{
             padding: '2rem',
             borderRadius: '12px',
@@ -141,23 +135,15 @@ const ContactUs = () => {
               Send us a Message
             </h2>
 
-            {/* Success Message */}
             {status.type === 'success' && (
-              <div style={{
-                marginBottom: '1.5rem', padding: '1rem', background: '#dcfce7', border: '1px solid #86efac',
-                borderRadius: '8px', color: '#166534', display: 'flex', alignItems: 'center', gap: '0.75rem'
-              }}>
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#dcfce7', border: '1px solid #86efac', borderRadius: '8px', color: '#166534', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <CheckCircle size={20} />
                 <span>{status.message}</span>
               </div>
             )}
 
-            {/* Error Message */}
             {status.type === 'error' && (
-              <div style={{
-                marginBottom: '1.5rem', padding: '1rem', background: '#fee2e2', border: '1px solid #fca5a5',
-                borderRadius: '8px', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.75rem'
-              }}>
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <AlertCircle size={20} />
                 <span>{status.message}</span>
               </div>
@@ -166,74 +152,26 @@ const ContactUs = () => {
             <form onSubmit={handleSubmit}>
               <div className="mb-4" style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>Full Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="input-field"
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                  required
-                />
+                <input type="text" name="name" value={formData.name} onChange={handleChange} className="input-field" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} required />
               </div>
 
               <div className="mb-4" style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>Email Address</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="input-field"
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                  required
-                />
+                <input type="email" name="email" value={formData.email} onChange={handleChange} className="input-field" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} required />
               </div>
 
               <div className="mb-4" style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>Subject</label>
-                <input
-                  type="text"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  className="input-field"
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                  required
-                />
+                <input type="text" name="subject" value={formData.subject} onChange={handleChange} className="input-field" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} required />
               </div>
 
               <div className="mb-4" style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>Message</label>
-                <textarea
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
-                  className="input-field"
-                  rows={6}
-                  required
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', resize: 'vertical' }}
-                />
+                <textarea name="message" value={formData.message} onChange={handleChange} className="input-field" rows={6} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', resize: 'vertical' }} />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary"
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: '0.5rem', padding: '1rem', borderRadius: '8px',
-                  background: loading ? '#93c5fd' : '#2563eb',
-                  color: 'white', border: 'none', fontSize: '1rem', fontWeight: 600,
-                  cursor: loading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {loading ? 'Sending...' : (
-                  <>
-                    <Send size={20} />
-                    Send Message
-                  </>
-                )}
+              <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem', borderRadius: '8px', background: loading ? '#93c5fd' : '#2563eb', color: 'white', border: 'none', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                {loading ? 'Sending...' : ( <> <Send size={20} /> Send Message </> )}
               </button>
             </form>
           </div>
