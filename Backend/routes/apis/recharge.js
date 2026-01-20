@@ -301,11 +301,25 @@ router.post("/status-update/:transactionId", async (req, res, next) => {
                 plan_id: userUpdate.plan_id
             });
 
-            console.log('🎉 ALL DATABASE UPDATES COMPLETED SUCCESSFULLY');
+            // 6. Send Payment Success Email
+try {
+    console.log('📧 Sending Payment Success Email...');
+    await sendPaymentSuccessMail(
+        rechargeEntry.Email_ID,
+        rechargeEntry.FullName,
+        planInfo.plan_name,
+        rechargeEntry.Amount,
+        expiryDate.toLocaleDateString('en-GB')
+    );
+    console.log('✅ Email sent successfully');
+} catch (emailError) {
+    console.error('⚠️ Email failed (non-critical):', emailError.message);
+}
 
-            // Redirect to Success Page
-            return res.redirect('https://smartdocs365.com/subscription?success=true');
+console.log('🎉 ALL DATABASE UPDATES COMPLETED SUCCESSFULLY');
 
+// Redirect with plan name
+return res.redirect(`https://smartdocs365.com/subscription?success=true&plan=${encodeURIComponent(planInfo.plan_name)}`);
         } else {
             console.log("❌ Payment Failed:", response.data);
             return res.redirect('https://smartdocs365.com/subscription?error=payment_failed');
