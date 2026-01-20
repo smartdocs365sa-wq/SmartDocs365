@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ COMPLETE FIX: Text logos for email compatibility
+// ✅ FIXED: Real PNG logo from Docker backend
 // ============================================
 const axios = require("axios");
 const path = require("path");
@@ -20,8 +20,9 @@ const secretKey = process.env.SECRET_KEY || 'sdlfklfas6df5sd4fsdf5';
 const algorithm = 'aes-256-cbc';
 const baseUrl = "https://smartdocs365-backend-docker.onrender.com/api/";
 
-// ✅ LOGO FIX: Use text-based logo (works in all email clients including Gmail)
-const TEXT_LOGO = `<h1 style="margin: 0; font-size: 36px; font-weight: 800; font-family: Arial, sans-serif;">SmartDocs<span style="color: inherit; opacity: 0.8;">365</span></h1>`;
+// ✅ CRITICAL FIX: Use Docker backend logo URL
+const LOGO_URL = "https://smartdocs365-backend-docker.onrender.com/logo.png";
+const LOGO_HTML = `<img src="${LOGO_URL}" alt="SmartDocs365" style="height: 50px; display: block; margin: 0 auto;">`;
 
 /* ============================================================
    ✅ ZOHO MAIL HTTP API (INDIA DC - .IN)
@@ -151,13 +152,19 @@ setTimeout(async () => {
 }, 2000);
 
 /* ============================================================
-   ✅ HELPER FUNCTION: Replace SVG with Text Logo
+   ✅ HELPER FUNCTION: Replace SVG/old logo with Docker backend logo
    ============================================================ */
-function replaceSVGWithTextLogo(html, color = '#ffffff') {
-  // Replace any SVG logo with text-based logo
-  const svgPattern = /<svg[^>]*>[\s\S]*?<\/svg>/gi;
-  const textLogo = `<h1 style="margin: 0; font-size: 36px; font-weight: 800; font-family: Arial, sans-serif; color: ${color};">SmartDocs<span style="opacity: 0.8;">365</span></h1>`;
-  return html.replace(svgPattern, textLogo);
+function replaceLogoWithDockerBackend(html) {
+  // Replace SVG logos
+  html = html.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, LOGO_HTML);
+  
+  // Replace old backend logo URLs
+  html = html.replace(/https:\/\/smartdocs365-backend\.onrender\.com\/logo\.png/g, LOGO_URL);
+  
+  // Replace any other logo image references
+  html = html.replace(/src="[^"]*logo\.(png|jpg|jpeg)"/gi, `src="${LOGO_URL}"`);
+  
+  return html;
 }
 
 /* ============================================================
@@ -168,8 +175,8 @@ function sendWelcomeMail(email, name) {
   fs.readFile(welcomeMessageFile, "utf8", async (err, template) => {
     if (err) return console.error("❌ Template missing:", err);
     
-    // ✅ Replace SVG with text logo
-    let fixedTemplate = replaceSVGWithTextLogo(template, '#ffffff');
+    // ✅ Replace logo with Docker backend URL
+    let fixedTemplate = replaceLogoWithDockerBackend(template);
     const rendered = fixedTemplate.replace("{{{ name }}}", name);
     
     await sendEmailQueued({ 
@@ -177,6 +184,7 @@ function sendWelcomeMail(email, name) {
       subject: "Welcome to SmartDocs365!", 
       html: rendered 
     });
+    console.log('✅ Welcome email queued for:', email);
   });
 }
 
@@ -186,14 +194,15 @@ async function expiredMail(email, name, date) {
     const template = Handlebars.compile(templateData);
     const rendered = template({ name, date }); 
     
-    // ✅ Replace SVG with text logo
-    const finalHtml = replaceSVGWithTextLogo(rendered, '#0369a1');
+    // ✅ Replace logo with Docker backend URL
+    const finalHtml = replaceLogoWithDockerBackend(rendered);
     
     await sendEmailQueued({ 
       to: email, 
       subject: "⚠️ Subscription Expiring Soon", 
       html: finalHtml 
     });
+    console.log('✅ Expiry email queued for:', email);
   } catch (err) { 
     console.error("❌ Template error:", err.message); 
   }
@@ -205,14 +214,15 @@ async function expiredPolicyMail(email, name, date, number, days) {
     const template = Handlebars.compile(templateData);
     const rendered = template({ name, number, date, days });
     
-    // ✅ Replace SVG with text logo
-    const finalHtml = replaceSVGWithTextLogo(rendered, '#dc2626');
+    // ✅ Replace logo with Docker backend URL
+    const finalHtml = replaceLogoWithDockerBackend(rendered);
     
     await sendEmailQueued({ 
       to: email, 
       subject: `📄 Policy Renewal Reminder - ${number}`, 
       html: finalHtml 
     });
+    console.log('✅ Policy expiry email queued for:', email);
   } catch (err) { 
     console.error("❌ Template error:", err.message); 
   }
@@ -222,8 +232,8 @@ function sendOtpCode(email, otpCode) {
   fs.readFile(sendOtpFile, "utf8", async (err, template) => {
     if (err) return console.error("❌ OTP template missing:", err);
     
-    // ✅ Replace SVG with text logo
-    let fixedTemplate = replaceSVGWithTextLogo(template, '#3b82f6');
+    // ✅ Replace logo with Docker backend URL
+    let fixedTemplate = replaceLogoWithDockerBackend(template);
     const rendered = fixedTemplate.replace("{{{ otpCode }}}", otpCode);
     
     await sendEmailQueued({ 
@@ -231,6 +241,7 @@ function sendOtpCode(email, otpCode) {
       subject: "Your OTP Verification Code", 
       html: rendered 
     });
+    console.log('✅ OTP email queued for:', email);
   });
 }
 
@@ -242,8 +253,8 @@ async function sendResetEmail(email, name, resetToken) {
     const template = Handlebars.compile(templateData);
     const renderedTemplate = template({ name, resetToken, baseUrl });
     
-    // ✅ Replace SVG with text logo
-    const finalHtml = replaceSVGWithTextLogo(renderedTemplate, '#ffffff');
+    // ✅ Replace logo with Docker backend URL
+    const finalHtml = replaceLogoWithDockerBackend(renderedTemplate);
     
     await sendEmailQueued({ 
       to: email, 
@@ -251,8 +262,10 @@ async function sendResetEmail(email, name, resetToken) {
       html: finalHtml 
     });
     
+    console.log('✅ Reset password email queued for:', email);
     return true;
   } catch (error) { 
+    console.error('❌ Reset email error:', error.message);
     return false; 
   }
 }
@@ -266,7 +279,7 @@ async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate)
       const fallbackHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
           <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
-            <h1 style="margin: 0; font-size: 36px; font-weight: 800; color: #ffffff; font-family: Arial, sans-serif;">SmartDocs<span style="opacity: 0.8;">365</span></h1>
+            <img src="${LOGO_URL}" alt="SmartDocs365" style="height: 50px; display: block; margin: 0 auto;">
           </div>
           <div style="padding: 30px; text-align: center;">
             <div style="font-size: 48px; margin-bottom: 20px;">✓</div>
@@ -309,8 +322,8 @@ async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate)
       transactionDate
     });
     
-    // ✅ Replace SVG with text logo
-    const finalHtml = replaceSVGWithTextLogo(rendered, '#ffffff');
+    // ✅ Replace logo with Docker backend URL
+    const finalHtml = replaceLogoWithDockerBackend(rendered);
     
     await sendEmailQueued({ 
       to: email, 
@@ -318,7 +331,7 @@ async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate)
       html: finalHtml 
     });
     
-    console.log('✅ Payment success email sent to:', email);
+    console.log('✅ Payment success email queued for:', email);
     return { success: true };
     
   } catch (err) { 
@@ -332,8 +345,8 @@ async function sendLimitReachedMail(email, name, limit) {
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0;">
-        <h1 style="margin: 0; font-size: 36px; font-weight: 800; font-family: Arial, sans-serif;">SmartDocs<span style="opacity: 0.8;">365</span></h1>
-        <h2 style="margin: 20px 0 0 0;">⚠️ Upload Limit Reached</h2>
+        <img src="${LOGO_URL}" alt="SmartDocs365" style="height: 50px; display: block; margin: 0 auto 20px;">
+        <h2 style="margin: 0;">⚠️ Upload Limit Reached</h2>
       </div>
       <div style="background: white; padding: 30px; border: 1px solid #fee2e2; border-radius: 0 0 12px 12px;">
         <p style="color: #374151; font-size: 16px;">Dear <strong>${name}</strong>,</p>
@@ -346,7 +359,7 @@ async function sendLimitReachedMail(email, name, limit) {
     </div>
   `;
   
-  console.log(`📧 Queuing Limit Reached Mail for ${email}`);
+  console.log(`📧 Limit reached email queued for: ${email}`);
   await sendEmailQueued({ 
     to: email, 
     subject: "⚠️ Action Required: Upload Limit Reached", 
