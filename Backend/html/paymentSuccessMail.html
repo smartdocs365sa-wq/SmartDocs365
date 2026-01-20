@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Successful - SmartDocs365</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0fdf4;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 40px 0; text-align: center;">
+                <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                    
+                    <!-- Header with SVG Logo -->
+                    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
+                        <svg width="200" height="50" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" style="display: block; margin: 0 auto;">
+                            <text x="10" y="35" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">SmartDocs</text>
+                            <text x="155" y="35" font-family="Arial, sans-serif" font-size="20" fill="#d1fae5">365</text>
+                        </svg>
+                    </div>
+
+                    <!-- Success Icon -->
+                    <div style="padding: 30px 30px 0;">
+                        <div style="width: 80px; height: 80px; background: #d1fae5; border-radius: 50%; margin: 0 auto 20px; position: relative;">
+                            <svg width="80" height="80" viewBox="0 0 80 80" style="position: absolute; top: 0; left: 0;">
+                                <circle cx="40" cy="40" r="38" fill="#d1fae5"/>
+                                <polyline points="25 40 35 50 55 30" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <h1 style="color: #065f46; margin: 0 0 10px 0; font-size: 28px;">Payment Successful!</h1>
+                        <p style="color: #6b7280; font-size: 16px; margin: 0;">Your subscription has been activated</p>
+                    </div>
+
+                    <!-- Payment Details -->
+                    <div style="padding: 30px;">
+                        <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                            Dear <strong>{{ name }}</strong>,
+                        </p>
+                        
+                        <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                            Thank you for subscribing to SmartDocs365! Your payment has been processed successfully and your account has been upgraded.
+                        </p>
+
+                        <!-- Payment Info Card -->
+                        <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 12px; padding: 25px; margin: 25px 0;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 40%;">Plan:</td>
+                                    <td style="padding: 8px 0; color: #065f46; font-weight: bold; font-size: 16px; text-align: right;">{{ planName }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Amount Paid:</td>
+                                    <td style="padding: 8px 0; color: #065f46; font-weight: bold; font-size: 16px; text-align: right;">₹{{ amount }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Valid Until:</td>
+                                    <td style="padding: 8px 0; color: #10b981; font-weight: bold; font-size: 16px; text-align: right;">{{ expiryDate }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Transaction Date:</td>
+                                    <td style="padding: 8px 0; color: #374151; font-size: 14px; text-align: right;">{{ transactionDate }}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Benefits Section -->
+                        <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 25px 0; text-align: left;">
+                            <p style="color: #1e40af; font-weight: bold; margin: 0 0 10px 0; font-size: 15px;">✨ Your Benefits:</p>
+                            <ul style="color: #374151; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                                <li>Unlimited policy uploads</li>
+                                <li>Automated renewal reminders</li>
+                                <li>Secure document storage</li>
+                                <li>Priority customer support</li>
+                            </ul>
+                        </div>
+
+                        <!-- CTA Button -->
+                        <div style="margin: 30px 0; text-align: center;">
+                            <a href="https://smartdocs365.com/dashboard" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                                Access Dashboard
+                            </a>
+                        </div>
+
+                        <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 20px 0 0;">
+                            If you have any questions, feel free to reach out to our support team at 
+                            <a href="mailto:Support@smartdocs365.com" style="color: #10b981; text-decoration: none; font-weight: 600;">Support@smartdocs365.com</a>
+                        </p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="background-color: #f9fafb; padding: 25px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+                        <p style="color: #374151; font-size: 14px; margin: 0 0 5px 0; font-weight: 600;">
+                            Thank you for choosing SmartDocs365! 🎉
+                        </p>
+                        <p style="margin: 10px 0 0; color: #9ca3af; font-size: 12px;">
+                            &copy; 2026 SmartDocs365. All rights reserved.<br>
+                            This is an automated email. Please do not reply.
+                        </p>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

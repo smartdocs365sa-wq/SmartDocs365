@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/utils/repetedUsedFunction.js
-// ✅ FIXED: Limit Email, Payment Email, Zoho India
+// ✅ UPDATED: Payment Email with Template
 // ============================================
 const axios = require("axios");
 const path = require("path");
@@ -14,11 +14,12 @@ const welcomeMessageFile = path.join(__dirname, "../html/", "welcomeEmail.html")
 const sendOtpFile = path.join(__dirname, "../html/", "otpMail.html");
 const expiryMailFile = path.join(__dirname, "../html/", "expiryMail.html");
 const expiryPolicyMailFile = path.join(__dirname, "../html/", "policyExpireMail.html");
+const paymentSuccessFile = path.join(__dirname, "../html/", "paymentSuccessMail.html"); // ✅ NEW
 
 const secretKey = process.env.SECRET_KEY || 'sdlfklfas6df5sd4fsdf5'; 
 const algorithm = 'aes-256-cbc';
-const baseUrl = "https://smartdocs365-backend.onrender.com/api/"; 
-const LOGO_URL = "https://smartdocs365-backend.onrender.com/logo.png"; 
+const baseUrl = "https://smartdocs365-backend-docker.onrender.com/api/"; // ✅ UPDATED TO DOCKER
+const LOGO_URL = "https://smartdocs365-backend-docker.onrender.com/logo.png"; // ✅ UPDATED TO DOCKER
 
 /* ============================================================
    ✅ ZOHO MAIL HTTP API (INDIA DC - .IN)
@@ -34,7 +35,7 @@ async function getZohoToken() {
 
   try {
     const response = await axios.post(
-      'https://accounts.zoho.in/oauth/v2/token', // ✅ India DC
+      'https://accounts.zoho.in/oauth/v2/token',
       null,
       {
         params: {
@@ -65,7 +66,7 @@ async function getZohoAccountId(token) {
 
   try {
     const response = await axios.get(
-      'https://mail.zoho.in/api/accounts', // ✅ India DC
+      'https://mail.zoho.in/api/accounts',
       { headers: { 'Authorization': `Zoho-oauthtoken ${token}` }, timeout: 10000 }
     );
     zohoAccountId = response.data.data[0].accountId;
@@ -98,7 +99,7 @@ async function sendEmail(mailOptions) {
     if (mailOptions.replyTo) emailData.replyTo = mailOptions.replyTo;
 
     const response = await axios.post(
-      `https://mail.zoho.in/api/accounts/${accountId}/messages`, // ✅ India DC
+      `https://mail.zoho.in/api/accounts/${accountId}/messages`,
       emailData,
       {
         headers: { 
@@ -176,7 +177,7 @@ async function expiredPolicyMail(email, name, date, number, days) {
     const template = Handlebars.compile(templateData);
     const rendered = template({ name, number, date, days });
     const finalHtml = rendered.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
-    await sendEmailQueued({ to: email, subject: `🔔 Policy Renewal Reminder - ${number}`, html: finalHtml });
+    await sendEmailQueued({ to: email, subject: `📄 Policy Renewal Reminder - ${number}`, html: finalHtml });
   } catch (err) { console.error("❌ Template error:", err.message); }
 }
 
@@ -201,35 +202,82 @@ async function sendResetEmail(email, name, resetToken) {
   } catch (error) { return false; }
 }
 
-// ✅ Payment Success Email
+// ✅ UPDATED: Payment Success Email with Template
 async function sendPaymentSuccessMail(email, name, planName, amount, expiryDate) {
-  const htmlContent = `
-    <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
-      <img src="${LOGO_URL}" alt="SmartDocs365" style="height: 60px;">
-      <h2 style="color: #10b981;">Payment Successful!</h2>
-      <p>Dear ${name},</p>
-      <p>Thank you for purchasing <strong>${planName}</strong>.</p>
-      <div style="background: #f0fdf4; padding: 15px; margin: 20px 0; border-radius: 8px;">
-        <p><strong>Amount:</strong> ₹${amount}</p>
-        <p><strong>Valid Until:</strong> ${expiryDate}</p>
-      </div>
-      <a href="https://smartdocs365.com/dashboard" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Dashboard</a>
-    </div>
-  `;
-  await sendEmailQueued({ to: email, subject: "✅ Payment Successful - Plan Activated", html: htmlContent });
+  try {
+    // Check if template exists
+    if (!fs.existsSync(paymentSuccessFile)) {
+      console.warn('⚠️ Payment success template not found, using fallback HTML');
+      // Fallback HTML if template doesn't exist
+      const fallbackHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+          <h2 style="color: #10b981;">✅ Payment Successful!</h2>
+          <p>Dear ${name},</p>
+          <p>Thank you for purchasing <strong>${planName}</strong>.</p>
+          <div style="background: #f0fdf4; padding: 15px; margin: 20px 0; border-radius: 8px;">
+            <p><strong>Amount:</strong> ₹${amount}</p>
+            <p><strong>Valid Until:</strong> ${expiryDate}</p>
+          </div>
+          <a href="https://smartdocs365.com/dashboard" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Dashboard</a>
+        </div>
+      `;
+      await sendEmailQueued({ 
+        to: email, 
+        subject: "🎉 Payment Successful - Plan Activated", 
+        html: fallbackHtml 
+      });
+      return { success: true };
+    }
+
+    // Use template if it exists
+    const templateData = fs.readFileSync(paymentSuccessFile, 'utf8');
+    const template = Handlebars.compile(templateData);
+    
+    const transactionDate = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+    
+    const rendered = template({ 
+      name, 
+      planName, 
+      amount, 
+      expiryDate,
+      transactionDate
+    });
+    
+    const finalHtml = rendered.replace(/src="[^"]*logo\.(png|jpg)"/g, `src="${LOGO_URL}"`);
+    
+    await sendEmailQueued({ 
+      to: email, 
+      subject: "🎉 Payment Successful - Welcome to SmartDocs365!", 
+      html: finalHtml 
+    });
+    
+    console.log('✅ Payment success email sent to:', email);
+    return { success: true };
+    
+  } catch (err) { 
+    console.error("❌ Payment email error:", err.message);
+    return { success: false, error: err.message };
+  }
 }
 
 // ✅ Limit Reached Email
 async function sendLimitReachedMail(email, name, limit) {
   const htmlContent = `
-    <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
-      <img src="${LOGO_URL}" alt="SmartDocs365" style="height: 60px;">
-      <h2 style="color: #ef4444;">⚠️ Upload Limit Reached</h2>
-      <p>Dear ${name},</p>
-      <p>You have reached your plan's limit of <strong>${limit} uploads</strong>.</p>
-      <p>Please upgrade your plan to continue uploading.</p>
-      <div style="margin: 20px 0;">
-        <a href="https://smartdocs365.com/subscription" style="background: #ef4444; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Upgrade Plan</a>
+    <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
+        <h2 style="margin: 0;">⚠️ Upload Limit Reached</h2>
+      </div>
+      <div style="background: white; padding: 30px; border: 1px solid #fee2e2; border-radius: 0 0 12px 12px;">
+        <p style="color: #374151; font-size: 16px;">Dear <strong>${name}</strong>,</p>
+        <p style="color: #6b7280;">You have reached your plan's limit of <strong style="color: #ef4444;">${limit} uploads</strong>.</p>
+        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 15px; margin: 20px 0; border-radius: 8px;">
+          <p style="color: #991b1b; margin: 0; font-size: 14px;">📊 To continue uploading policies, please upgrade your subscription plan.</p>
+        </div>
+        <a href="https://smartdocs365.com/subscription" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">Upgrade Plan Now</a>
       </div>
     </div>
   `;
@@ -277,5 +325,5 @@ module.exports = {
   isFutureDate, isValidDate, sendOtpCode, expiredMail, expiredPolicyMail,
   sendMailToSupportMail,
   sendPaymentSuccessMail,
-  sendLimitReachedMail // ✅ CRITICAL: Must be exported!
+  sendLimitReachedMail
 };
