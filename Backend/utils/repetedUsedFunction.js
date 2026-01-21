@@ -429,5 +429,5 @@ module.exports = {
   sendMailToSupportMail,
   sendPaymentSuccessMail,
   sendLimitReachedMail,
-  sendEmailQueued // <--- ✅ ADDED THIS EXPORT HERE
+  sendEmailQueued // <--- ✅ ADDED: This fixes the 'not a function' error
 };
