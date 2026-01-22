@@ -11,7 +11,7 @@ const { expiredMail, expiredPolicyMail } = require("./utils/repetedUsedFunction"
 
 // ✅ PRODUCTION SCHEDULE: Runs Daily at 9:00 AM
 // 🛑 DO NOT use "* * * * *" (Every Minute) or Zoho will block you again!
-cron.schedule("0 8 * * *", async () => {
+cron.schedule("20 8 * * *", async () => {
   console.log("🔔 Running daily subscription & policy checks...");
   await checkSubscriptionExpiry(); 
   await checkPolicyExpiry();       
