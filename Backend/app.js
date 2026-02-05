@@ -1,6 +1,6 @@
 // ============================================
 // FILE: Backend/app.js
-// ✅ COMPLETE: Updated with Cron Job Fix
+// ✅ COMPLETE: Updated with NEW Render URL (v2)
 // ============================================
 
 require("dotenv").config();
@@ -81,7 +81,7 @@ app.get('/logo.png', (req, res) => {
 });
 
 // ============================================
-// ✅ NEW: CRON JOB FIX (Fixes "Output too large")
+// ✅ CRON JOB FIX (Fixes "Output too large")
 // ============================================
 app.get('/api/cron/trigger', (req, res) => {
   // 1. Security Check (Matches your cron-job.org URL)
@@ -117,7 +117,7 @@ app.get('/get-zoho-token', async (req, res) => {
         </head>
         <body>
           <h1>Zoho Mail Setup</h1>
-          <a href="https://accounts.zoho.in/oauth/v2/auth?scope=ZohoMail.messages.CREATE,ZohoMail.accounts.READ&client_id=1000.TJUP8N9JKBHXAA1Q8FOSLB5DAW8T3Q&response_type=code&access_type=offline&redirect_uri=https://smartdocs365-backend-docker.onrender.com/get-zoho-token">
+          <a href="https://accounts.zoho.in/oauth/v2/auth?scope=ZohoMail.messages.CREATE,ZohoMail.accounts.READ&client_id=1000.TJUP8N9JKBHXAA1Q8FOSLB5DAW8T3Q&response_type=code&access_type=offline&redirect_uri=https://smartdocs365-backend-v2.onrender.com/get-zoho-token">
             Authorize Zoho Mail
           </a>
         </body>
@@ -135,7 +135,8 @@ app.get('/get-zoho-token', async (req, res) => {
           code: code,
           client_id: '1000.TJUP8N9JKBHXAA1Q8FOSLB5DAW8T3Q',
           client_secret: 'b7786316b5ef771e27f0c7956fb7b3d4524b05a5e3',
-          redirect_uri: 'https://smartdocs365-backend-docker.onrender.com/get-zoho-token',
+          // ✅ UPDATED: Points to NEW Render URL
+          redirect_uri: 'https://smartdocs365-backend-v2.onrender.com/get-zoho-token',
           grant_type: 'authorization_code'
         }
       }
